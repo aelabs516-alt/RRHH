@@ -1,4 +1,4 @@
-﻿FROM python:3.12-slim
+FROM python:3.12-slim
 
 # Environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -29,8 +29,8 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . /app/
 
-# Create media directory for persistence
-RUN mkdir -p /app/media
+# Create media and data directories for persistence
+RUN mkdir -p /app/media /app/data
 
 # Collect static files
 RUN python manage.py collectstatic --noinput

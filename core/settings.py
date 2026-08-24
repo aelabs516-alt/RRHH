@@ -71,9 +71,13 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+
+# En producción, guardamos la bd en la carpeta /app/data/ para montar el volumen fácilmente
+DB_PATH = BASE_DIR / 'data' / 'db.sqlite3' if not DEBUG else BASE_DIR / 'db.sqlite3'
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        default=f"sqlite:///{DB_PATH}",
         conn_max_age=600,
         conn_health_checks=True,
     )

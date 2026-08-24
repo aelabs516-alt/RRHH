@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Marcación Individual - Consola Admin{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>Marcación Manual (Individual)</h2>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="card shadow-sm" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Colaborador</label>
+                <select name="user_id" class="form-select" required>
+                    <option value="">Seleccione un colaborador...</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}">{{ u.document_number }} - {{ u.get_full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">Fecha de Registro</label>
+                <input type="date" name="date" class="form-control" value="{{ today }}" required>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label fw-bold">Hora Ingreso</label>
+                    <input type="time" name="entry_time" class="form-control">
+                </div>
+                <div class="col">
+                    <label class="form-label fw-bold">Hora Salida</label>
+                    <input type="time" name="exit_time" class="form-control">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Tipo de Justificación</label>
+                <select name="justification_type" class="form-select">
+                    <option value="NORMAL">Ninguna / Normal</option>
+                    <optgroup label="Permisos Remunerados">
+                        <option value="CITA_MEDICA">Cita médica</option>
+                        <option value="ELECCIONES">Elecciones / Jurado</option>
+                        <option value="CALAMIDAD">Calamidad</option>
+                        <option value="ESCOLAR">Obligaciones escolares</option>
+                        <option value="JUDICIAL">Citas Judiciales</option>
+                        <option value="LUTO">Luto</option>
+                        <option value="ENFERMEDAD">Enfermedad General</option>
+                    </optgroup>
+                    <optgroup label="Permisos NO Remunerados">
+                        <option value="PERSONAL">Asuntos personales</option>
+                        <option value="OTROS">Otros</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Observaciones / Justificación</label>
+                <textarea name="observations" class="form-control" rows="2"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar Registro</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const entryInput = document.querySelector('input[name="entry_time"]');
+        const exitInput = document.querySelector('input[name="exit_time"]');
+        
+        function calcHours() {
+            if (entryInput.value && exitInput.value) {
+                const start = new Date("1970-01-01T" + entryInput.value + ":00");
+                const end = new Date("1970-01-01T" + exitInput.value + ":00");
+                let diff = (end - start) / (1000 * 60 * 60);
+                if (diff < 0) diff += 24; // Cross-midnight
+                
+                let hrDisplay = document.getElementById('live_hours');
+                if (!hrDisplay) {
+                    hrDisplay = document.createElement('div');
+                    hrDisplay.id = 'live_hours';
+                    hrDisplay.className = 'mt-2 fw-bold text-success';
+                    exitInput.parentNode.appendChild(hrDisplay);
+                }
+                hrDisplay.innerText = "Horas Calculadas: " + diff.toFixed(2) + " h";
+            }
+        }
+        
+        entryInput.addEventListener('change', calcHours);
+        exitInput.addEventListener('change', calcHours);
+    });
+</script>
+{% endblock %}

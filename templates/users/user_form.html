@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - RRHH{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>{{ title }}</h2>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <h5 class="mb-3">Datos del Colaborador</h5>
+            <div class="row">
+            {% for field in form %}
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+
+            <hr class="my-4">
+            
+            <h5 class="mb-3">Matriz Semanal de Turnos</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Lunes</th>
+                            <th>Martes</th>
+                            <th>Miércoles</th>
+                            <th>Jueves</th>
+                            <th>Viernes</th>
+                            <th>Sábado</th>
+                            <th>Domingo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <select name="turn_monday" class="form-select form-select-sm">
+                                    <option value="">Descanso</option>
+                                    {% for t in turns %}
+                                    <option value="{{ t.id }}" {% if t_monday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="turn_tuesday" class="form-select form-select-sm">
+                                    <option value="">Descanso</option>
+                                    {% for t in turns %}
+                                    <option value="{{ t.id }}" {% if t_tuesday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="turn_wednesday" class="form-select form-select-sm">
+                                    <option value="">Descanso</option>
+                                    {% for t in turns %}
+                                    <option value="{{ t.id }}" {% if t_wednesday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="turn_thursday" class="form-select form-select-sm">
+                                    <option value="">Descanso</option>
+                                    {% for t in turns %}
+                                    <option value="{{ t.id }}" {% if t_thursday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="turn_friday" class="form-select form-select-sm">
+                                    <option value="">Descanso</option>
+                                    {% for t in turns %}
+                                    <option value="{{ t.id }}" {% if t_friday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="turn_saturday" class="form-select form-select-sm">
+                                    <option value="">Descanso</option>
+                                    {% for t in turns %}
+                                    <option value="{{ t.id }}" {% if t_saturday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="turn_sunday" class="form-select form-select-sm">
+                                    <option value="">Descanso</option>
+                                    {% for t in turns %}
+                                    <option value="{{ t.id }}" {% if t_sunday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Guardar Colaborador</button>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let inputs = document.querySelectorAll('input, select:not([name^="turn_"]), textarea');
+        inputs.forEach(input => {
+            if(input.type !== 'checkbox' && input.type !== 'radio') {
+                input.classList.add('form-control');
+            } else {
+                input.classList.add('form-check-input');
+            }
+            if(input.name && (input.name.includes('date') || input.name === 'month')) {
+                input.type = 'date';
+            }
+            if(input.name === 'salary') {
+                input.type = 'text';
+                const formatCurrency = (val) => {
+                    let num = parseFloat(val.replace(/,/g, ''));
+                    if (isNaN(num)) return '';
+                    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+                if (input.value) input.value = formatCurrency(input.value);
+                input.addEventListener('blur', function(e) {
+                    e.target.value = formatCurrency(e.target.value);
+                });
+                input.closest('form').addEventListener('submit', function() {
+                    input.value = input.value.replace(/,/g, '');
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

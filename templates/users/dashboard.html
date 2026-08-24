@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - RRHH{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card mb-4 border-0">
+    <div class="card-body rounded" style="background-color: var(--bs-body-bg); border: 1px solid var(--card-border);">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label fw-bold">Año</label>
+                <input type="number" name="year" class="form-control" placeholder="Ej: 2026" value="{{ f_year|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold">Mes (1-12)</label>
+                <input type="number" name="month" class="form-control" min="1" max="12" placeholder="Ej: 8" value="{{ f_month|default:'' }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Día Específico</label>
+                <input type="date" name="day" class="form-control" value="{{ f_day|default:'' }}">
+            </div>
+            {% if is_admin %}
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Colaborador</label>
+                <select name="user_id" class="form-select">
+                    <option value="">Todos</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if f_collab == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100 mb-1">Filtrar</button>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary w-100">Limpiar Filtro</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Estilos basados en la imagen solicitada */
+    .kpi-card {
+        border-radius: 12px;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--card-shadow);
+        border-left: 6px solid #00b87c; 
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        transition: all 0.3s ease;
+    }
+    .kpi-icon-box {
+        background: #e6f7f0;
+        color: #00b87c;
+        border-radius: 12px;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin-right: 15px;
+    }
+    .kpi-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--bs-secondary-color);
+        text-transform: uppercase;
+        margin: 0;
+        letter-spacing: 0.5px;
+    }
+    .kpi-value {
+        font-size: 32px;
+        font-weight: 900;
+        color: var(--bs-body-color);
+        margin: 0;
+        line-height: 1.2;
+    }
+</style>
+
+<!-- KPIs -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon-box" style="background:#e6f7f0; color:#00b87c;"><i class="fas fa-bolt"></i></div>
+            <div>
+                <p class="kpi-title">HORAS EXTRAS</p>
+                <p class="kpi-value">{{ kpis.extras }}h</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card" style="border-left-color: #f6ad55;">
+            <div class="kpi-icon-box" style="background:#fffaf0; color:#dd6b20;"><i class="fas fa-clock"></i></div>
+            <div>
+                <p class="kpi-title">HORAS PERMISO</p>
+                <p class="kpi-value">{{ kpis.permisos }}h</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card" style="border-left-color: #e53e3e;">
+            <div class="kpi-icon-box" style="background:#fff5f5; color:#c53030;"><i class="fas fa-exclamation-triangle"></i></div>
+            <div>
+                <p class="kpi-title">LLEGADAS TARDE</p>
+                <p class="kpi-value">{{ kpis.tardies }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card" style="border-left-color: #3182ce;">
+            <div class="kpi-icon-box" style="background:#ebf8ff; color:#2b6cb0;"><i class="fas fa-file-signature"></i></div>
+            <div>
+                <p class="kpi-title">ACTAS DISCIPL.</p>
+                <p class="kpi-value" style="font-size: 24px;">{{ kpis.acts_signed }} <small class="text-muted" style="font-size:14px; font-weight:normal;">Firmadas</small></p>
+                <p class="kpi-value text-danger" style="font-size: 18px;">{{ kpis.acts_pending }} <small class="text-muted" style="font-size:12px; font-weight:normal;">Pendientes</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Gráfico Horas Extras -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-bold">Horas Extras Acumuladas por Colaborador</div>
+            <div class="card-body">
+                <canvas id="extrasChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Gráfico Vacaciones -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-bold">Días de Vacaciones Disponibles por Colaborador</div>
+            <div class="card-body">
+                <canvas id="vacsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if is_admin %}
+<!-- Panel de Auditoría -->
+<div class="card shadow-sm mb-4 border-danger border-2">
+    <div class="card-header bg-danger text-white fw-bold">
+        <i class="fas fa-exclamation-circle"></i> Panel de Auditoría: Incidencias Críticas de Retardo (Esta Semana)
+    </div>
+    <div class="card-body">
+        {% if critical_tardies %}
+        <table class="table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Retardos esta semana</th>
+                    <th>Acción sugerida</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ct in critical_tardies %}
+                <tr>
+                    <td>{{ ct.user__first_name }} {{ ct.user__last_name }} ({{ ct.user__document_number }})</td>
+                    <td class="text-danger fw-bold">{{ ct.count }}</td>
+                    <td>
+                        <a href="{% url 'acts_auto_generate' ct.user__document_number %}" class="btn btn-sm btn-outline-danger">Generar Acta Disciplinaria</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No se detectaron colaboradores con 3 o más retardos en la semana actual.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Panel de Marcaciones Fuera de Rango -->
+<div class="card shadow-sm mb-4 border-warning border-2">
+    <div class="card-header bg-warning text-dark fw-bold">
+        <i class="fas fa-map-marker-alt"></i> Panel de Auditoría: Marcaciones Fuera del Rango de la Empresa (Hoy)
+    </div>
+    <div class="card-body">
+        {% if out_of_bounds_alerts %}
+        <table class="table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Hora de Marcación</th>
+                    <th>Tipo</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alert in out_of_bounds_alerts %}
+                <tr>
+                    <td>{{ alert.user.get_full_name }} ({{ alert.user.document_number }})</td>
+                    <td class="text-danger fw-bold">
+                        {% if alert.entry_time and not alert.exit_time %}{{ alert.entry_time|date:"H:i" }}{% else %}{{ alert.exit_time|date:"H:i" }}{% endif %}
+                    </td>
+                    <td>{% if alert.entry_time and not alert.exit_time %}Ingreso{% else %}Salida{% endif %}</td>
+                    <td>
+                        <a href="{% url 'attendance:map' %}?user_id={{ alert.user.id }}&date={{ alert.date|date:'Y-m-d' }}" class="btn btn-sm btn-outline-dark">
+                            <i class="fas fa-map"></i> Ver en Mapa
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No hay marcaciones fuera del perímetro de 30 metros de la empresa reportadas hoy.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Consolidado Neto -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header fw-bold">
+        <i class="fas fa-table"></i> Consolidado Neto de Horas por Colaborador (Extras vs Permisos)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Cédula</th>
+                        <th>Colaborador</th>
+                        <th>Turno/Día</th>
+                        <th>Total Extras</th>
+                        <th>Total Permisos</th>
+                        <th>Balance Neto</th>
+                        <th>Estado / Liquidación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in net_table %}
+                    <tr>
+                        <td>{{ row.doc }}</td>
+                        <td class="fw-bold">{{ row.name }}</td>
+                        <td>{{ row.turn }}</td>
+                        <td class="text-success">+{{ row.extras }}h</td>
+                        <td class="text-danger">-{{ row.permisos }}h</td>
+                        <td class="fw-bold {% if row.balance > 0 %}text-success{% elif row.balance < 0 %}text-danger{% endif %}">
+                            {{ row.balance }}h
+                        </td>
+                        <td>
+                            {% if row.balance > 0 %}
+                            <span class="badge bg-success">A favor del Colaborador</span>
+                            {% elif row.balance < 0 %}
+                            <span class="badge bg-danger">En contra (Descontar)</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Al día</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js y Plugin Datalabels -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+<script>
+    Chart.register(ChartDataLabels);
+    Chart.defaults.font.family = "'Poppins', sans-serif";
+
+    // Data para Horas Extras
+    const extrasLabels = [
+        {% for e in extras_chart %}"{{ e.user__first_name }} {{ e.user__last_name }}",{% endfor %}
+    ];
+    const extrasData = [
+        {% for e in extras_chart %}{{ e.total|stringformat:"f" }},{% endfor %}
+    ];
+
+    if(extrasLabels.length > 0) {
+        new Chart(document.getElementById('extrasChart'), {
+            type: 'bar',
+            data: {
+                labels: extrasLabels,
+                datasets: [{
+                    label: 'Horas Extras',
+                    data: extrasData,
+                    backgroundColor: '#00b87c',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                layout: { padding: { top: 25 } },
+                plugins: {
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        color: 'var(--bs-body-color)',
+                        font: { weight: 'bold' },
+                        formatter: function(value) { return value + 'h'; }
+                    },
+                    legend: { display: false }
+                },
+                scales: { 
+                    y: { display: false, beginAtZero: true },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // Data para Vacaciones
+    const vacsLabels = [
+        {% for v in vacs_chart %}"{{ v.name }}",{% endfor %}
+    ];
+    const vacsData = [
+        {% for v in vacs_chart %}{{ v.balance|stringformat:"f" }},{% endfor %}
+    ];
+
+    if(vacsLabels.length > 0) {
+        new Chart(document.getElementById('vacsChart'), {
+            type: 'bar',
+            data: {
+                labels: vacsLabels,
+                datasets: [{
+                    label: 'Días Acumulados',
+                    data: vacsData,
+                    backgroundColor: '#3182ce',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                layout: { padding: { top: 25 } },
+                plugins: {
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        color: 'var(--bs-body-color)',
+                        font: { weight: 'bold' },
+                        formatter: function(value) { return value + 'd'; }
+                    },
+                    legend: { display: false }
+                },
+                scales: { 
+                    y: { display: false, beginAtZero: true },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+</script>
+
+{% endblock %}

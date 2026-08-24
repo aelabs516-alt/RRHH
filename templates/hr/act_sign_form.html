@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Proceso Disciplinario{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-danger text-white fw-bold">
+                <i class="fas fa-file-signature"></i> ACTA DE PROCESO DISCIPLINARIO
+            </div>
+            <div class="card-body p-4">
+                <form method="post" id="actForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Datos Automáticos -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Colaborador</label>
+                            <input type="text" class="form-control" value="{{ object.user.get_full_name }} ({{ object.user.document_number }})" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Fecha del Acta</label>
+                            <input type="text" class="form-control" value="{{ object.created_at|date:'d/m/Y' }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Cargo</label>
+                            <input type="text" class="form-control" value="{{ object.user.position.name|default:'N/A' }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Área</label>
+                            <input type="text" class="form-control" value="{{ object.user.area.name|default:'N/A' }}" readonly>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Faltas -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Tipo de Falta</label>
+                        <div class="d-flex gap-4 mt-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" {% if object.severity == 'LEVE' %}checked{% endif %} disabled>
+                                <label class="form-check-label text-success">Leve</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" {% if object.severity == 'GRAVE' %}checked{% endif %} disabled>
+                                <label class="form-check-label text-warning">Grave</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" {% if object.severity == 'MUY_GRAVE' %}checked{% endif %} disabled>
+                                <label class="form-check-label text-danger">Muy grave</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hechos -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Descripción Detallada del Hecho</label>
+                        <textarea class="form-control bg-light" rows="4" readonly>{{ object.description }}</textarea>
+                    </div>
+
+                    <!-- Descargos (Obligatorio) -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-primary">Descargos del Colaborador <span class="text-danger">*</span></label>
+                        <textarea name="employee_defense" class="form-control" rows="4" required placeholder="Escriba aquí sus descargos o comentarios sobre la situación presentada..." {% if object.employee_signature %}readonly{% endif %}>{{ object.employee_defense }}</textarea>
+                    </div>
+
+                    <!-- Decisión -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Decisión</label>
+                        <input type="text" class="form-control bg-light fw-bold text-danger" value="Llamado de atención escrito" readonly>
+                    </div>
+
+                    <hr class="my-5">
+
+                    <!-- Lienzo de Firmas -->
+                    <h5 class="fw-bold mb-4">Firmas del Proceso</h5>
+                    <div class="row">
+                        <!-- Firma Jefe -->
+                        <div class="col-md-6 text-center border-end">
+                            <label class="form-label fw-bold text-muted mb-3">Firma Jefe Inmediato</label>
+                            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 8px;">
+                                {% if object.manager_signature %}
+                                    <img src="{{ object.manager_signature.url }}" alt="Firma Jefe" style="max-height: 130px; max-width: 100%;">
+                                {% else %}
+                                    <span class="text-muted small"><i class="fas fa-exclamation-circle"></i> Firma no registrada en sistema</span>
+                                {% endif %}
+                            </div>
+                            <p class="mt-2 mb-0 fw-bold">{{ object.user.manager.get_full_name|default:"Jefe Inmediato" }}</p>
+                            <p class="small text-muted">{{ object.user.manager.position.name|default:"" }}</p>
+                        </div>
+                        
+                        <!-- Firma Colaborador -->
+                        <div class="col-md-6 text-center">
+                            <label class="form-label fw-bold text-muted mb-3">Firma del Colaborador <span class="text-danger">*</span></label>
+                            
+                            {% if object.employee_signature %}
+                            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 8px;">
+                                <img src="{{ object.employee_signature.url }}" alt="Firma Colaborador" style="max-height: 130px; max-width: 100%;">
+                            </div>
+                            {% else %}
+                            <div>
+                                <canvas id="signature-pad" class="signature-pad" width="300" height="150" style="border: 1px solid #00b87c; border-radius: 8px; cursor: crosshair; background: #fff; touch-action: none;"></canvas>
+                                <input type="hidden" name="signature_base64" id="signature_base64">
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-signature">Limpiar Firma</button>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <p class="mt-2 mb-0 fw-bold">{{ object.user.get_full_name }}</p>
+                            <p class="small text-muted">{{ object.user.document_number }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 text-end">
+                        <a href="{% url 'acts_list' %}" class="btn btn-secondary me-2">{% if object.employee_signature %}Volver{% else %}Cancelar{% endif %}</a>
+                        {% if not object.employee_signature %}
+                        <button type="submit" class="btn btn-success" id="submitBtn">
+                            <i class="fas fa-check-circle"></i> Guardar Acta y Firmar
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<!-- Signature Pad JS -->
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const canvas = document.getElementById('signature-pad');
+    if (canvas) {
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            penColor: 'rgb(0, 0, 0)'
+        });
+
+        document.getElementById('clear-signature').addEventListener('click', function () {
+            signaturePad.clear();
+        });
+
+        document.getElementById('actForm').addEventListener('submit', function (e) {
+            if (signaturePad.isEmpty()) {
+                e.preventDefault();
+                alert("Por favor, proporcione su firma en el recuadro antes de guardar.");
+            } else {
+                document.getElementById('signature_base64').value = signaturePad.toDataURL();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

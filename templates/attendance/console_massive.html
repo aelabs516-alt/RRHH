@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Marcación Simultánea - Consola Admin{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>Registro Simultáneo (Masivo)</h2>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="d-flex align-items-center gap-3">
+            <label class="fw-bold">Fecha del registro:</label>
+            <input type="date" name="date" class="form-control w-25" value="{{ selected_date }}" required>
+            <button type="submit" class="btn btn-secondary">Cargar Fecha</button>
+        </form>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ selected_date }}">
+    
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover bg-white shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Turno del día</th>
+                    <th>Hora Ingreso</th>
+                    <th>Hora Salida</th>
+                    <th>Tipo Permiso</th>
+                    <th>Observaciones</th>
+                    <th>Horas Calculadas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in user_data %}
+                <tr>
+                    <td>
+                        {{ d.user.get_full_name }} ({{ d.user.document_number }})
+                        <input type="hidden" name="user_ids" value="{{ d.user.id }}">
+                    </td>
+                    <td>{{ d.turn }}</td>
+                    <td><input type="time" name="entry_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.entry_time|time:'H:i'|default:'' }}"></td>
+                    <td><input type="time" name="exit_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.exit_time|time:'H:i'|default:'' }}"></td>
+                    <td>
+                        <select name="just_{{ d.user.id }}" class="form-select form-select-sm">
+                            <option value="NORMAL" {% if d.attendance.justification_type == 'NORMAL' %}selected{% endif %}>Normal</option>
+                            <optgroup label="Remunerados">
+                                <option value="CITA_MEDICA" {% if d.attendance.justification_type == 'CITA_MEDICA' %}selected{% endif %}>Cita médica</option>
+                                <option value="ELECCIONES" {% if d.attendance.justification_type == 'ELECCIONES' %}selected{% endif %}>Elecciones</option>
+                                <option value="CALAMIDAD" {% if d.attendance.justification_type == 'CALAMIDAD' %}selected{% endif %}>Calamidad</option>
+                                <option value="ESCOLAR" {% if d.attendance.justification_type == 'ESCOLAR' %}selected{% endif %}>Obligaciones escolares</option>
+                                <option value="JUDICIAL" {% if d.attendance.justification_type == 'JUDICIAL' %}selected{% endif %}>Citas Judiciales</option>
+                                <option value="LUTO" {% if d.attendance.justification_type == 'LUTO' %}selected{% endif %}>Luto</option>
+                                <option value="ENFERMEDAD" {% if d.attendance.justification_type == 'ENFERMEDAD' %}selected{% endif %}>Enfermedad General</option>
+                            </optgroup>
+                            <optgroup label="NO Remunerados">
+                                <option value="PERSONAL" {% if d.attendance.justification_type == 'PERSONAL' %}selected{% endif %}>Asuntos personales</option>
+                                <option value="OTROS" {% if d.attendance.justification_type == 'OTROS' %}selected{% endif %}>Otros</option>
+                            </optgroup>
+                        </select>
+                    </td>
+                    <td><input type="text" name="obs_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.observations|default:'' }}"></td>
+                    <td class="calculated-hours-cell text-center align-middle fw-bold" id="hr_{{ d.user.id }}">{{ d.attendance.hours_worked|default:'0' }} h</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg mt-3">Guardar Registros Masivos</button>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const entryInput = row.querySelector('input[name^="entry_"]');
+            const exitInput = row.querySelector('input[name^="exit_"]');
+            const hrDisplay = row.querySelector('td.calculated-hours-cell');
+            
+            function calcHours() {
+                if (entryInput.value && exitInput.value) {
+                    const start = new Date("1970-01-01T" + entryInput.value + ":00");
+                    const end = new Date("1970-01-01T" + exitInput.value + ":00");
+                    let diff = (end - start) / (1000 * 60 * 60);
+                    if (diff < 0) diff += 24;
+                    hrDisplay.innerText = diff.toFixed(2) + " h";
+                    hrDisplay.classList.add('text-success');
+                } else {
+                    hrDisplay.classList.remove('text-success');
+                }
+            }
+            
+            entryInput.addEventListener('change', calcHours);
+            exitInput.addEventListener('change', calcHours);
+        });
+    });
+</script>
+{% endblock %}

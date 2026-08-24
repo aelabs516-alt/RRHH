@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - RRHH{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ title }}</h2>
+    <div class="d-flex gap-2">
+        {% if search_enabled %}
+        <form method="get" class="d-flex">
+            <input type="text" name="q" class="form-control" placeholder="Buscar por Cédula..." value="{{ request.GET.q }}">
+            <button type="submit" class="btn btn-outline-secondary ms-1"><i class="fas fa-search"></i></button>
+            {% if request.GET.q %}
+            <a href="?" class="btn btn-outline-danger ms-1"><i class="fas fa-times"></i></a>
+            {% endif %}
+        </form>
+        {% endif %}
+        {% if create_url %}
+        <a href="{% url create_url %}" class="btn btn-primary d-flex align-items-center gap-2"><i class="fas fa-plus"></i> Nuevo Registro</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    {% for header in headers %}
+                    <th>{{ header }}</th>
+                    {% endfor %}
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obj in objects %}
+                <tr>
+                    <!-- Se asume que render_row es un template tag o que pasamos los valores pre-formateados -->
+                    {% for value in obj.get_row_values %}
+                    <td>{{ value }}</td>
+                    {% endfor %}
+                    <td>
+                        <a href="{% url update_url obj.pk %}" class="btn btn-sm btn-outline-secondary">
+                            {% if title == 'Actas Disciplinarias' %}Ver / Firmar{% else %}Editar{% endif %}
+                        </a>
+                        {% if pdf_url_name %}
+                        <a href="{% url pdf_url_name obj.pk %}" class="btn btn-sm btn-outline-danger ms-1" title="Descargar PDF">
+                            <i class="fas fa-file-pdf"></i>
+                        </a>
+                        {% endif %}
+                        {% if delete_url_name %}
+                        <a href="{% url delete_url_name obj.pk %}" class="btn btn-sm btn-outline-dark ms-1" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="100%" class="text-center">No hay registros disponibles.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

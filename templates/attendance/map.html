@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mapa de Marcaciones{% endblock %}
+
+{% block extra_head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    #map {
+        height: 600px;
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+    }
+    .company-popup {
+        font-weight: bold;
+        color: #2b6cb0;
+    }
+    .marker-popup {
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3 class="mb-3">
+            <i class="fas fa-map-marked-alt text-primary"></i> Geolocalización de Marcaciones
+        </h3>
+        
+        <!-- Filtros y Configuración -->
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <form method="get" class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Fecha</label>
+                                <input type="date" name="date" class="form-control" value="{{ date_filter }}">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">Colaborador</label>
+                                <select name="user_id" class="form-select">
+                                    <option value="">Todos</option>
+                                    {% for u in users %}
+                                    <option value="{{ u.id }}" {% if user_id == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary w-100 mb-1">Filtrar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100 border-start border-success border-4">
+                    <div class="card-body">
+                        <label class="form-label fw-bold text-success"><i class="fas fa-crosshairs"></i> Radio de Tolerancia (m)</label>
+                        <div class="input-group">
+                            <input type="number" id="radiusInput" class="form-control" value="{{ company_radius }}" min="10" max="500">
+                            <button class="btn btn-success" type="button" id="btnSaveRadius">Actualizar</button>
+                        </div>
+                        <small class="text-muted d-block mt-1">Distancia máxima permitida para fichar.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-2">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+    const markersData = {{ markers_json|safe }};
+    const companyLat = parseFloat("{{ company_lat }}".replace(',', '.'));
+    const companyLng = parseFloat("{{ company_lng }}".replace(',', '.'));
+
+    // Inicializar Mapa centrado en la Empresa
+    const map = L.map('map').setView([companyLat, companyLng], 17);
+
+    // Cargar mapa (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Icono Empresa
+    const companyIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    // Icono Fuera de Rango
+    const dangerIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    // Marcador de la Empresa (Arrastrable para actualizar ubicación)
+    const companyMarker = L.marker([companyLat, companyLng], {
+        icon: companyIcon,
+        draggable: true,
+        title: 'Arrastra este marcador para cambiar la ubicación de la empresa'
+    }).addTo(map)
+      .bindPopup('<div class="company-popup">🏢 Instalaciones de la Empresa<br><small class="text-muted">Arrastra este pin para cambiar la ubicación</small></div>')
+      .openPopup();
+
+    let companyCircle = L.circle([companyLat, companyLng], {
+        color: '#00b87c',
+        fillColor: '#00b87c',
+        fillOpacity: 0.1,
+        radius: parseInt("{{ company_radius }}") || 30
+    }).addTo(map);
+
+    companyMarker.on('dragend', function(e) {
+        const newPos = e.target.getLatLng();
+        
+        if(confirm('¿Deseas guardar esta nueva ubicación como la sede principal de la empresa?')) {
+            fetch("{% url 'attendance:update_company_location' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({lat: newPos.lat, lng: newPos.lng})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('Ubicación actualizada correctamente.');
+                    companyCircle.setLatLng(newPos);
+                } else {
+                    alert('Error: ' + data.message);
+                    companyMarker.setLatLng([companyLat, companyLng]);
+                }
+            })
+            .catch(err => {
+                alert('Error de conexión.');
+                companyMarker.setLatLng([companyLat, companyLng]);
+            });
+        } else {
+            companyMarker.setLatLng([companyLat, companyLng]);
+        }
+    });
+
+    // Evento para actualizar radio
+    document.getElementById('btnSaveRadius').addEventListener('click', function() {
+        const newRadius = document.getElementById('radiusInput').value;
+        if (!newRadius || newRadius <= 0) return;
+        
+        if(confirm('¿Deseas actualizar el radio de tolerancia permitido a ' + newRadius + ' metros?')) {
+            fetch("{% url 'attendance:update_company_location' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({radius: newRadius})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('Radio de tolerancia actualizado correctamente.');
+                    companyCircle.setRadius(parseInt(newRadius));
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => alert('Error de conexión.'));
+        }
+    });
+
+    // Agregar Marcaciones
+    const bounds = L.latLngBounds([[companyLat, companyLng]]);
+    
+    markersData.forEach(m => {
+        const markerIcon = m.out_of_bounds ? dangerIcon : new L.Icon.Default();
+        const marker = L.marker([m.lat, m.lng], {icon: markerIcon}).addTo(map);
+        
+        let popupHtml = '<div class="marker-popup">' +
+            '<strong>' + m.name + '</strong> (' + m.doc + ')<br>' +
+            'Entrada: ' + m.entry + '<br>' +
+            'Salida: ' + m.exit + '<br>';
+            
+        if(m.out_of_bounds) {
+            popupHtml += '<span class="text-danger fw-bold"><i class="fas fa-exclamation-triangle"></i> Fuera de Rango</span>';
+        } else {
+            popupHtml += '<span class="text-success"><i class="fas fa-check-circle"></i> En Empresa</span>';
+        }
+        popupHtml += '</div>';
+        
+        marker.bindPopup(popupHtml);
+        bounds.extend([m.lat, m.lng]);
+    });
+
+    // Ajustar zoom si hay muchas marcaciones
+    if (markersData.length > 0) {
+        map.fitBounds(bounds, {padding: [50, 50]});
+    }
+</script>
+{% endblock %}

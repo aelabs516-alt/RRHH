@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - RRHH{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>{{ title }}</h2>
+</div>
+
+<div class="card shadow-sm" style="max-width: 800px;">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="row">
+            {% for field in form %}
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small class="form-text text-muted">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Guardar Registro</button>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            // Apply bootstrap classes
+            if(input.type !== 'checkbox' && input.type !== 'radio') {
+                input.classList.add('form-control');
+            } else {
+                input.classList.add('form-check-input');
+            }
+            
+            // Convert date fields automatically
+            if(input.name && (input.name.includes('date') || input.name === 'month')) {
+                // If it's a DateTimeField it usually needs datetime-local, but Django might provide initial value differently.
+                // We'll set it to date, or datetime-local
+                if (input.name === 'start_time' || input.name === 'end_time' || input.name === 'start_date' || input.name === 'end_date') {
+                    input.type = 'datetime-local';
+                } else {
+                    input.type = 'date';
+                }
+            }
+            
+            // Format Salary field with thousands separator (visual only, we need raw value for POST)
+            if(input.name === 'salary') {
+                input.type = 'text'; // change from number
+                
+                // Helper to format
+                const formatCurrency = (val) => {
+                    let num = parseFloat(val.replace(/,/g, ''));
+                    if (isNaN(num)) return '';
+                    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+                
+                // On load, format existing value
+                if (input.value) {
+                    input.value = formatCurrency(input.value);
+                }
+                
+                input.addEventListener('blur', function(e) {
+                    e.target.value = formatCurrency(e.target.value);
+                });
+                
+                // Before submit, remove commas so Django accepts it as Decimal
+                input.closest('form').addEventListener('submit', function() {
+                    input.value = input.value.replace(/,/g, '');
+                });
+            }
+        });
+        
+        // ---- Lógica específica para Permisos y Vacaciones ----
+        const categorySelect = document.querySelector('select[name="category"]');
+        if (categorySelect) {
+            const startInput = document.querySelector('input[name="start_date"]');
+            const endInput = document.querySelector('input[name="end_date"]');
+            
+            // Create a label for days
+            let daysLabel = document.createElement('div');
+            daysLabel.id = 'vacation_days_label';
+            daysLabel.className = 'mt-2 fw-bold text-primary';
+            daysLabel.style.display = 'none';
+            endInput.parentNode.appendChild(daysLabel);
+
+            function updateVacationUI() {
+                if (categorySelect.value === 'VACATION') {
+                    // Cambiar a input type date (oculta horas)
+                    startInput.type = 'date';
+                    endInput.type = 'date';
+                    
+                    // Solo para recortar el string "T..." si ya tenía hora asignada al cargar
+                    if (startInput.value.includes('T')) startInput.value = startInput.value.split('T')[0];
+                    if (endInput.value.includes('T')) endInput.value = endInput.value.split('T')[0];
+                    
+                    daysLabel.style.display = 'block';
+                    calculateWorkingDays();
+                } else {
+                    startInput.type = 'datetime-local';
+                    endInput.type = 'datetime-local';
+                    daysLabel.style.display = 'none';
+                }
+            }
+
+            let colombianHolidays = [];
+            fetch('/api/holidays/')
+                .then(res => res.json())
+                .then(data => { colombianHolidays = data.holidays; calculateWorkingDays(); });
+
+            function calculateWorkingDays() {
+                if (startInput.value && endInput.value && categorySelect.value === 'VACATION') {
+                    let startDate = new Date(startInput.value + "T00:00:00");
+                    let endDate = new Date(endInput.value + "T00:00:00");
+                    let days = 0;
+                    
+                    let currentDate = new Date(startDate);
+                    while (currentDate <= endDate) {
+                        let dateString = currentDate.toISOString().split('T')[0];
+                        if (currentDate.getDay() !== 0 && !colombianHolidays.includes(dateString)) {
+                            days++;
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                    daysLabel.innerText = "Días Hábiles a Disfrutar (excl. domingos y festivos): " + days;
+                }
+            }
+
+            categorySelect.addEventListener('change', updateVacationUI);
+            startInput.addEventListener('change', calculateWorkingDays);
+            endInput.addEventListener('change', calculateWorkingDays);
+            
+            // Trigger on load
+            updateVacationUI();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Constancia Laboral</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 2cm;
+            @frame footer {
+                -pdf-frame-content: footer_content;
+                bottom: 0cm;
+                height: 2cm;
+            }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            color: #000;
+        }
+        .logo-container {
+            margin-bottom: 30px;
+        }
+        .logo-container img {
+            width: 140px;
+        }
+        .header-text {
+            font-weight: bold;
+            font-size: 13px;
+            line-height: 1.2;
+        }
+        .title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 15px;
+            margin-top: 50px;
+            margin-bottom: 50px;
+        }
+        .body-text {
+            text-align: justify;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .signature-section {
+            margin-top: 50px;
+            font-size: 13px;
+            line-height: 1.2;
+        }
+        .signature-line {
+            margin-top: 60px;
+            margin-bottom: 5px;
+        }
+        #footer_content {
+            background-color: #00909e;
+            color: white;
+            text-align: center;
+            padding-top: 10px;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+        #footer_content a {
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <div class="logo-container">
+            <img src="{% static 'img/logo.png' %}" alt="Logo">
+        </div>
+
+        <div class="header-text">
+            TECNOLOGIA Y MOVILIDAD SAS<br>
+            NIT. 901.818.992-1
+        </div>
+
+        <div class="title">
+            A QUIEN INTERESE
+        </div>
+
+        <div class="body-text">
+            Certificamos que <strong>{{ user.get_full_name|upper }}</strong>, identificada con cedula de ciudadanía número 
+            {{ user.document_number|default:"__________" }} expedida en Medellín, trabaja para Tecnología y Movilidad SAS desde el {{ hire_day_words|default:"___" }} ({{ user.hire_date.day|default:"__" }}) 
+            de {{ hire_month|default:"___" }} de {{ hire_year|default:"____" }}, desempeñando el cargo de {{ user.position.name|default:"_______________" }} con un contrato a término 
+            indefinido
+            {% if include_salary %}
+            y una remuneración mensual de {{ salary_words }} pesos MCTE 
+            (${{ salary_formatted }}.oo).
+            {% else %}
+            .
+            {% endif %}
+            <br><br>
+            Se expide a solicitud del interesado el {{ today_day_words }} ({{ today.day }}) de {{ today_month }} de {{ today.year }}.
+        </div>
+
+        <div class="signature-section">
+            Atentamente,<br>
+            <div style="margin-top: 40px; margin-bottom: 5px;">
+                <img src="{% static 'img/firma_melissa.png' %}" alt="Firma" style="width: 150px; height: 50px;">
+            </div>
+            <div class="signature-line" style="margin-top: 0px;">
+                __________________________
+            </div>
+            <strong>Melissa Lancheros Ramírez</strong><br>
+            Representante Legal<br>
+            Cel: 3005610774
+        </div>
+    </div>
+
+    <div id="footer_content">
+        Tecnología y Movilidad SAS<br>
+        Carrera 43 A # 18 Sur – 174 Local 252 – Medellin, Antioquia<br>
+        Tel: +57 3026606677<br>
+        <a href="http://www.tecnologiaymovilidad.com">www.tecnologiaymovilidad.com</a>
+    </div>
+</body>
+</html>

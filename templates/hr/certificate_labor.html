@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Generar Constancia Laboral{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>Generar Constancia Laboral</h2>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="card shadow-sm" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="post" target="_blank">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">Documento de Identidad</label>
+                {% if user.role in 'ADMIN,JEFE' or user.is_superuser %}
+                <input type="text" name="document_number" class="form-control" required placeholder="Digite el documento del colaborador">
+                {% else %}
+                <input type="text" name="document_number" class="form-control" value="{{ user.document_number }}" readonly>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Dirigido a</label>
+                <input type="text" name="directed_to" class="form-control" placeholder="Ej: A quien corresponda" value="A quien corresponda">
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="include_salary" id="include_salary" class="form-check-input" checked>
+                <label class="form-check-label fw-bold" for="include_salary">Incluir información salarial</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Generar y Descargar Constancia</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

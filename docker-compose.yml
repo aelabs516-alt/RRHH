@@ -1,0 +1,23 @@
+﻿version: '3.8'
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=tecnologia-y-movilidad-super-secret-key-prod
+      - ALLOWED_HOSTS=*
+      - CSRF_TRUSTED_ORIGINS=https://tu-dominio.com
+      # Si deseas usar PostgreSQL integrado de Easypanel, descomenta y ajusta esta lnea:
+      # - DATABASE_URL=postgres://usuario:password@host:5432/db_name
+    ports:
+      - "8000:8000"
+    volumes:
+      - rh_data:/app/media
+      # Si usas SQLite, descomenta la siguiente lnea para no perder los datos:
+      - rh_db:/app/db.sqlite3
+
+volumes:
+  rh_data:
+  rh_db:

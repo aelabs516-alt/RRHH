@@ -214,8 +214,17 @@ class UserCreateView(LoginRequiredMixin, CreateView):
         return ctx
 
     def form_valid(self, form):
-        response = super().form_valid(form)
-        user = self.object
+        # We intercept the save to set the password
+        user = form.save(commit=False)
+        # If no password is set, use document_number as default password
+        if not user.password:
+            user.set_password(user.document_number)
+        user.save()
+        self.object = user
+        
+        # Save M2M if needed (not in this form, but standard practice)
+        form.save_m2m()
+        
         matrix = EmployeeTurn(user=user)
         matrix.turn_monday_id = self.request.POST.get('turn_monday') or None
         matrix.turn_tuesday_id = self.request.POST.get('turn_tuesday') or None
@@ -225,7 +234,7 @@ class UserCreateView(LoginRequiredMixin, CreateView):
         matrix.turn_saturday_id = self.request.POST.get('turn_saturday') or None
         matrix.turn_sunday_id = self.request.POST.get('turn_sunday') or None
         matrix.save()
-        return response
+        return redirect(self.success_url)
 
 class UserUpdateView(LoginRequiredMixin, UpdateView):
     model = User

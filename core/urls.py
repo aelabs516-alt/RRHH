@@ -17,6 +17,7 @@ urlpatterns = [
     path('users/', user_views.UserListView.as_view(), name='users_list'),
     path('users/create/', user_views.UserCreateView.as_view(), name='users_create'),
     path('users/<int:pk>/update/', user_views.UserUpdateView.as_view(), name='users_update'),
+    path('users/<int:pk>/delete/', user_views.UserDeleteView.as_view(), name='users_delete'),
     
     # Módulos Adicionales (Custom Frontend)
     path('areas/', core_views.AreaListView.as_view(), name='areas_list'),

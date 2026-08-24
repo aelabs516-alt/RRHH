@@ -179,7 +179,7 @@ def custom_logout(request):
     logout(request)
     return redirect('login')
 
-from django.views.generic import ListView, CreateView, UpdateView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import User
@@ -195,7 +195,23 @@ class UserListView(LoginRequiredMixin, ListView):
         ctx['headers'] = ['Documento', 'Nombre', 'Rol', 'Cargo', 'Estado']
         ctx['create_url'] = 'users_create'
         ctx['update_url'] = 'users_update'
+        ctx['delete_url_name'] = 'users_delete'
         return ctx
+
+class UserDeleteView(LoginRequiredMixin, DeleteView):
+    model = User
+    template_name = 'crud/confirm_delete.html'
+    success_url = reverse_lazy('users_list')
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['title'] = 'Eliminar Colaborador'
+        ctx['cancel_url'] = reverse_lazy('users_list')
+        return ctx
+
+    def get_queryset(self):
+        # Evitar que puedan eliminar a un superusuario desde la interfaz
+        return super().get_queryset().exclude(is_superuser=True)
 
 from apps.organization.models import Turn, EmployeeTurn
 

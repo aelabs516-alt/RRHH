@@ -137,7 +137,11 @@
                     
                     let currentDate = new Date(startDate);
                     while (currentDate <= endDate) {
-                        let dateString = currentDate.toISOString().split('T')[0];
+                        let year = currentDate.getFullYear();
+                        let month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                        let day = String(currentDate.getDate()).padStart(2, '0');
+                        let dateString = `${year}-${month}-${day}`;
+                        
                         // Excluir domingos (0) y festivos
                         if (currentDate.getDay() !== 0 && !colombianHolidays.includes(dateString)) {
                             days++;

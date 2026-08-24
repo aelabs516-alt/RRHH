@@ -7,9 +7,24 @@ from apps.organization.models import Turn, CustomHoliday, Area, Position
 from apps.attendance.models import Permission
 from apps.hr.models import DisciplinaryAct, PayrollSlip
 
+import holidays as pyholidays
+
 def get_holidays_api(request):
-    holidays = CustomHoliday.objects.values_list('date', flat=True)
-    return JsonResponse({'holidays': [h.strftime('%Y-%m-%d') for h in holidays]})
+    import datetime
+    year = datetime.date.today().year
+    
+    # Obtener festivos de Colombia usando la librería (año actual y el próximo)
+    co_holidays = pyholidays.CO(years=[year, year + 1])
+    holiday_dates = [date_obj.strftime('%Y-%m-%d') for date_obj in co_holidays.keys()]
+    
+    # Agregar festivos personalizados de la base de datos (si existen)
+    db_holidays = CustomHoliday.objects.values_list('date', flat=True)
+    for h in db_holidays:
+        date_str = h.strftime('%Y-%m-%d')
+        if date_str not in holiday_dates:
+            holiday_dates.append(date_str)
+            
+    return JsonResponse({'holidays': holiday_dates})
 
 # -- ÁREAS --
 class AreaListView(LoginRequiredMixin, ListView):

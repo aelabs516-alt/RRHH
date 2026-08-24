@@ -143,6 +143,9 @@ class PermissionListView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         qs = super().get_queryset()
+        if self.request.user.role not in ['ADMIN', 'JEFE'] and not self.request.user.is_superuser:
+            qs = qs.filter(user=self.request.user)
+            
         q = self.request.GET.get('q')
         if q:
             qs = qs.filter(user__document_number__icontains=q)
@@ -151,8 +154,12 @@ class PermissionListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['title'], ctx['headers'] = 'Permisos y Vacaciones', ['Documento', 'Colaborador', 'Categoría', 'F. Inicio', 'F. Fin', 'Estado']
-        ctx['create_url'], ctx['update_url'] = 'permissions_create', 'permissions_update'
-        ctx['search_enabled'] = True
+        
+        if self.request.user.role in ['ADMIN', 'JEFE'] or self.request.user.is_superuser:
+            ctx['create_url'] = 'permissions_create'
+            ctx['update_url'] = 'permissions_update'
+            ctx['search_enabled'] = True
+            
         return ctx
 
 class PermissionCreateView(LoginRequiredMixin, CreateView):

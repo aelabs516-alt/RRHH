@@ -40,9 +40,11 @@
                     <td>{{ value }}</td>
                     {% endfor %}
                     <td>
+                        {% if update_url %}
                         <a href="{% url update_url obj.pk %}" class="btn btn-sm btn-outline-secondary">
                             {% if title == 'Actas Disciplinarias' %}Ver / Firmar{% else %}Editar{% endif %}
                         </a>
+                        {% endif %}
                         {% if pdf_url_name %}
                         <a href="{% url pdf_url_name obj.pk %}" class="btn btn-sm btn-outline-danger ms-1" title="Descargar PDF">
                             <i class="fas fa-file-pdf"></i>

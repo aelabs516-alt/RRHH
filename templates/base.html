@@ -135,8 +135,9 @@
             
             <hr>
             <h6 class="px-2 text-muted">Constancias (Nómina)</h6>
-            <a href="{% url 'certificate_labor' %}">📜 Constancia Laboral</a>
-            <a href="{% url 'download_payroll' %}">📄 Descargar Colilla PDF</a>
+            <a href="{% url 'certificate_labor' %}">📄 Constancia Laboral</a>
+            <a href="{% url 'download_payroll' %}">📥 Descargar Colilla PDF</a>
+            <a href="{% url 'permissions_list' %}">🏖️ Permisos y Vacaciones</a>
             
             {% if user.role == 'ADMIN' or user.role == 'JEFE' or user.is_superuser %}
             <hr>
@@ -150,10 +151,9 @@
             <a href="{% url 'users_list' %}">👥 Colaboradores</a>
             <a href="{% url 'areas_list' %}">🏢 Áreas</a>
             <a href="{% url 'positions_list' %}">💼 Cargos</a>
-            <a href="{% url 'turns_list' %}">🕒 Turnos</a>
+            <a href="{% url 'turns_list' %}">⏰ Turnos</a>
             <a href="{% url 'holidays_list' %}">📅 Festivos</a>
-            <a href="{% url 'permissions_list' %}">✈️ Permisos y Vacaciones</a>
-            <a href="{% url 'payroll_list' %}">📄 Nómina (Colillas)</a>
+            <a href="{% url 'payroll_list' %}">💰 Nómina (Colillas)</a>
             <a href="{% url 'payroll_mass_upload' %}">⬆️ Carga Masiva Nómina</a>
             <a href="/admin/">⚙️ Configuración Avanzada</a>
             {% endif %}

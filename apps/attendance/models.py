@@ -75,6 +75,7 @@ class Permission(models.Model):
     category = models.CharField('Categoría de Permiso', max_length=30, choices=PermissionCategory.choices)
     start_date = models.DateTimeField('Fecha/Hora Inicio')
     end_date = models.DateTimeField('Fecha/Hora Fin')
+    days_requested = models.IntegerField('Días a disfrutar', null=True, blank=True)
     reason = models.TextField('Motivo')
     status = models.CharField('Estado', max_length=20, choices=STATUS_CHOICES, default='PENDIENTE')
     

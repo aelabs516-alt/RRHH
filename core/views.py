@@ -154,9 +154,9 @@ class PermissionListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['title'], ctx['headers'] = 'Permisos y Vacaciones', ['Documento', 'Colaborador', 'Categoría', 'F. Inicio', 'F. Fin', 'Estado']
+        ctx['create_url'] = 'permissions_create'
         
         if self.request.user.role in ['ADMIN', 'JEFE'] or self.request.user.is_superuser:
-            ctx['create_url'] = 'permissions_create'
             ctx['update_url'] = 'permissions_update'
             ctx['search_enabled'] = True
             
@@ -164,7 +164,7 @@ class PermissionListView(LoginRequiredMixin, ListView):
 
 class PermissionCreateView(LoginRequiredMixin, CreateView):
     model = Permission
-    fields = ['user', 'category', 'start_date', 'end_date', 'reason']
+    fields = ['user', 'category', 'start_date', 'end_date', 'days_requested', 'reason']
     template_name = 'crud/form.html'
     success_url = reverse_lazy('permissions_list')
     def get_context_data(self, **kwargs):
@@ -174,7 +174,7 @@ class PermissionCreateView(LoginRequiredMixin, CreateView):
 
 class PermissionUpdateView(LoginRequiredMixin, UpdateView):
     model = Permission
-    fields = ['user', 'category', 'start_date', 'end_date', 'reason', 'status', 'admin_observations']
+    fields = ['user', 'category', 'start_date', 'end_date', 'days_requested', 'reason', 'status', 'admin_observations']
     template_name = 'crud/form.html'
     success_url = reverse_lazy('permissions_list')
     def get_context_data(self, **kwargs):

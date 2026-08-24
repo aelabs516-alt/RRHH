@@ -95,16 +95,17 @@
         if (categorySelect) {
             const startInput = document.querySelector('input[name="start_date"]');
             const endInput = document.querySelector('input[name="end_date"]');
+            const daysInput = document.querySelector('input[name="days_requested"]');
             
-            // Create a label for days
-            let daysLabel = document.createElement('div');
-            daysLabel.id = 'vacation_days_label';
-            daysLabel.className = 'mt-2 fw-bold text-primary';
-            daysLabel.style.display = 'none';
-            endInput.parentNode.appendChild(daysLabel);
+            // Container of daysInput to hide/show entirely
+            let daysContainer = null;
+            if (daysInput) {
+                daysContainer = daysInput.closest('.col-md-6');
+                daysInput.setAttribute('readonly', true); // Automático
+            }
 
             function updateVacationUI() {
-                if (categorySelect.value === 'VACATION') {
+                if (categorySelect.value === 'VACACIONES') {
                     // Cambiar a input type date (oculta horas)
                     startInput.type = 'date';
                     endInput.type = 'date';
@@ -113,12 +114,13 @@
                     if (startInput.value.includes('T')) startInput.value = startInput.value.split('T')[0];
                     if (endInput.value.includes('T')) endInput.value = endInput.value.split('T')[0];
                     
-                    daysLabel.style.display = 'block';
+                    if(daysContainer) daysContainer.style.display = 'block';
                     calculateWorkingDays();
                 } else {
                     startInput.type = 'datetime-local';
                     endInput.type = 'datetime-local';
-                    daysLabel.style.display = 'none';
+                    if(daysContainer) daysContainer.style.display = 'none';
+                    if(daysInput) daysInput.value = '';
                 }
             }
 
@@ -128,7 +130,7 @@
                 .then(data => { colombianHolidays = data.holidays; calculateWorkingDays(); });
 
             function calculateWorkingDays() {
-                if (startInput.value && endInput.value && categorySelect.value === 'VACATION') {
+                if (startInput.value && endInput.value && categorySelect.value === 'VACACIONES') {
                     let startDate = new Date(startInput.value + "T00:00:00");
                     let endDate = new Date(endInput.value + "T00:00:00");
                     let days = 0;
@@ -136,12 +138,15 @@
                     let currentDate = new Date(startDate);
                     while (currentDate <= endDate) {
                         let dateString = currentDate.toISOString().split('T')[0];
+                        // Excluir domingos (0) y festivos
                         if (currentDate.getDay() !== 0 && !colombianHolidays.includes(dateString)) {
                             days++;
                         }
                         currentDate.setDate(currentDate.getDate() + 1);
                     }
-                    daysLabel.innerText = "Días Hábiles a Disfrutar (excl. domingos y festivos): " + days;
+                    if (daysInput) {
+                        daysInput.value = days;
+                    }
                 }
             }
 

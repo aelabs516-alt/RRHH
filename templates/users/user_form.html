@@ -125,9 +125,6 @@
             } else {
                 input.classList.add('form-check-input');
             }
-            if(input.name && (input.name.includes('date') || input.name === 'month')) {
-                input.type = 'date';
-            }
             if(input.name === 'salary') {
                 input.type = 'text';
                 const formatCurrency = (val) => {

@@ -205,6 +205,13 @@ class UserCreateView(LoginRequiredMixin, CreateView):
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('users_list')
     
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        from django import forms
+        form.fields['birth_date'].widget = forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'})
+        form.fields['hire_date'].widget = forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'})
+        return form
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['title'] = 'Crear Colaborador'
@@ -242,6 +249,13 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('users_list')
     
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        from django import forms
+        form.fields['birth_date'].widget = forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'})
+        form.fields['hire_date'].widget = forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'})
+        return form
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['title'] = 'Editar Colaborador'

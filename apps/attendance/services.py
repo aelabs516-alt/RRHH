@@ -183,28 +183,27 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
         
     date = attendance.date
     turn = get_current_turn(user, date)
-    if not turn:
-        raise ValueError("El usuario no tiene un turno asignado para la fecha del ingreso.")
-        
-    turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))
     
-    # Night shift logic: if turn ends before it starts, add 1 day to end_datetime
-    if turn.end_time < turn.start_time:
-        turn_end_datetime += timedelta(days=1)
-        
-    # Evaluación de la Salida: Regla de 30 Minutos (Horas Extras)
-    extra_time = exit_datetime - turn_end_datetime
     extra_hours = 0.0
-    if extra_time.total_seconds() > 30 * 60:
-        # Se calculan las horas extras completas desde la hora oficial de salida
-        extra_hours = extra_time.total_seconds() / 3600.0
-        
-    # Cálculo de horas de permiso o salida anticipada
     permission_hours = 0.0
-    if exit_datetime < turn_end_datetime:
-        early_time = turn_end_datetime - exit_datetime
-        permission_hours = early_time.total_seconds() / 3600.0
+    
+    if turn:
+        turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))
         
+        # Night shift logic: if turn ends before it starts, add 1 day to end_datetime
+        if turn.end_time < turn.start_time:
+            turn_end_datetime += timedelta(days=1)
+            
+        # Evaluación de la Salida: Regla de 30 Minutos (Horas Extras)
+        extra_time = exit_datetime - turn_end_datetime
+        if extra_time.total_seconds() > 30 * 60:
+            extra_hours = extra_time.total_seconds() / 3600.0
+            
+        # Cálculo de horas de permiso o salida anticipada
+        if exit_datetime < turn_end_datetime:
+            early_time = turn_end_datetime - exit_datetime
+            permission_hours = early_time.total_seconds() / 3600.0
+
     # Condicional de Observaciones Obligatorias
     if (extra_hours > 0 or permission_hours > 0) and not observations.strip():
         raise ValueError("Es obligatorio ingresar el Motivo (observaciones) por generar horas extras o salida anticipada.")

@@ -19,6 +19,28 @@
             <h5 class="mb-3">Datos del Colaborador</h5>
             <div class="row">
             {% for field in form %}
+                {% if field.name == 'signature' %}
+                <div class="col-md-12 mb-3" id="signature_container" style="display: none;">
+                    <hr class="my-3">
+                    <label class="form-label fw-bold">{{ field.label }}</label>
+                    <div class="d-flex flex-wrap gap-4">
+                        <div>
+                            <p class="text-muted small mb-1">Opción 1: Dibuja la firma en el recuadro</p>
+                            <canvas id="signature-pad" class="border rounded" style="background-color: var(--bs-body-bg); border-color: var(--border-color)!important;" width="400" height="200"></canvas>
+                            <br>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="clear-signature">Limpiar Firma</button>
+                            <input type="hidden" name="signature_base64" id="signature_base64">
+                        </div>
+                        <div>
+                            <p class="text-muted small mb-1">Opción 2: Sube una imagen existente</p>
+                            {{ field }}
+                        </div>
+                    </div>
+                    {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+                {% else %}
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">{{ field.label }}</label>
                     {{ field }}
@@ -26,6 +48,7 @@
                         <div class="text-danger small">{{ field.errors }}</div>
                     {% endif %}
                 </div>
+                {% endif %}
             {% endfor %}
             </div>
 
@@ -51,7 +74,7 @@
                                 <select name="turn_monday" class="form-select form-select-sm">
                                     <option value="">Descanso</option>
                                     {% for t in turns %}
-                                    <option value="{{ t.id }}" {% if t_monday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    <option value="{{ t.id }}" {% if current_turns.monday == t.id %}selected{% endif %}>{{ t.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -59,7 +82,7 @@
                                 <select name="turn_tuesday" class="form-select form-select-sm">
                                     <option value="">Descanso</option>
                                     {% for t in turns %}
-                                    <option value="{{ t.id }}" {% if t_tuesday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    <option value="{{ t.id }}" {% if current_turns.tuesday == t.id %}selected{% endif %}>{{ t.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -67,7 +90,7 @@
                                 <select name="turn_wednesday" class="form-select form-select-sm">
                                     <option value="">Descanso</option>
                                     {% for t in turns %}
-                                    <option value="{{ t.id }}" {% if t_wednesday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    <option value="{{ t.id }}" {% if current_turns.wednesday == t.id %}selected{% endif %}>{{ t.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -75,7 +98,7 @@
                                 <select name="turn_thursday" class="form-select form-select-sm">
                                     <option value="">Descanso</option>
                                     {% for t in turns %}
-                                    <option value="{{ t.id }}" {% if t_thursday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    <option value="{{ t.id }}" {% if current_turns.thursday == t.id %}selected{% endif %}>{{ t.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -83,7 +106,7 @@
                                 <select name="turn_friday" class="form-select form-select-sm">
                                     <option value="">Descanso</option>
                                     {% for t in turns %}
-                                    <option value="{{ t.id }}" {% if t_friday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    <option value="{{ t.id }}" {% if current_turns.friday == t.id %}selected{% endif %}>{{ t.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -91,7 +114,7 @@
                                 <select name="turn_saturday" class="form-select form-select-sm">
                                     <option value="">Descanso</option>
                                     {% for t in turns %}
-                                    <option value="{{ t.id }}" {% if t_saturday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    <option value="{{ t.id }}" {% if current_turns.saturday == t.id %}selected{% endif %}>{{ t.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -99,7 +122,7 @@
                                 <select name="turn_sunday" class="form-select form-select-sm">
                                     <option value="">Descanso</option>
                                     {% for t in turns %}
-                                    <option value="{{ t.id }}" {% if t_sunday == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                    <option value="{{ t.id }}" {% if current_turns.sunday == t.id %}selected{% endif %}>{{ t.name }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -108,9 +131,9 @@
                 </table>
             </div>
 
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">Guardar Colaborador</button>
-                <a href="javascript:history.back()" class="btn btn-outline-secondary">Cancelar</a>
+            <div class="text-end mt-4">
+                <a href="{{ success_url }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-success">Guardar</button>
             </div>
         </form>
     </div>
@@ -118,6 +141,7 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        // Estilos de inputs
         let inputs = document.querySelectorAll('input, select:not([name^="turn_"]), textarea');
         inputs.forEach(input => {
             if(input.type !== 'checkbox' && input.type !== 'radio') {
@@ -141,6 +165,90 @@
                 });
             }
         });
+
+        // Lógica Mostrar/Ocultar Firma
+        const roleSelect = document.querySelector('select[name="role"]');
+        const signatureContainer = document.getElementById('signature_container');
+
+        function toggleSignature() {
+            if (roleSelect && signatureContainer) {
+                if (roleSelect.value === 'ADMIN' || roleSelect.value === 'JEFE') {
+                    signatureContainer.style.display = 'block';
+                } else {
+                    signatureContainer.style.display = 'none';
+                }
+            }
+        }
+        
+        if (roleSelect) {
+            roleSelect.addEventListener('change', toggleSignature);
+            toggleSignature();
+        }
+
+        // Lógica Canvas Firma
+        const canvas = document.getElementById('signature-pad');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            let hasDrawn = false;
+
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Set stroke color based on theme
+            const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
+
+            function draw(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+
+                // Handle touch and mouse
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                [lastX, lastY] = [x, y];
+                hasDrawn = true;
+                document.getElementById('signature_base64').value = canvas.toDataURL('image/png');
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                lastX = e.clientX - rect.left;
+                lastY = e.clientY - rect.top;
+            });
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', () => isDrawing = false);
+            canvas.addEventListener('mouseout', () => isDrawing = false);
+
+            canvas.addEventListener('touchstart', (e) => {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                lastX = e.touches[0].clientX - rect.left;
+                lastY = e.touches[0].clientY - rect.top;
+            });
+            canvas.addEventListener('touchmove', draw);
+            canvas.addEventListener('touchend', () => isDrawing = false);
+
+            document.getElementById('clear-signature').addEventListener('click', () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('signature_base64').value = "";
+                hasDrawn = false;
+            });
+        }
     });
 </script>
 {% endblock %}

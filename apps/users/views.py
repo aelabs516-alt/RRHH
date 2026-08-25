@@ -276,6 +276,17 @@ class UserCreateView(LoginRequiredMixin, CreateView):
         # If no password is set, use document_number as default password
         if not user.password:
             user.set_password(user.document_number)
+            
+        import base64
+        from django.core.files.base import ContentFile
+        from django.utils import timezone
+        
+        signature_b64 = self.request.POST.get('signature_base64')
+        if signature_b64:
+            format, imgstr = signature_b64.split(';base64,')
+            ext = format.split('/')[-1]
+            user.signature.save(f"sign_{user.document_number}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
+            
         user.save()
         self.object = user
         
@@ -325,6 +336,17 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         user = self.object
+        
+        import base64
+        from django.core.files.base import ContentFile
+        from django.utils import timezone
+        
+        signature_b64 = self.request.POST.get('signature_base64')
+        if signature_b64:
+            format, imgstr = signature_b64.split(';base64,')
+            ext = format.split('/')[-1]
+            user.signature.save(f"sign_{user.document_number}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}", ContentFile(base64.b64decode(imgstr)), save=True)
+            
         matrix = user.turns.last()
         if not matrix:
             matrix = EmployeeTurn(user=user)

@@ -86,6 +86,10 @@ def certificate_labor(request):
             colaborador = User.objects.get(document_number=doc)
             today = date.today()
             
+            directed_to = request.POST.get('directed_to', 'A QUIEN INTERESE')
+            if not directed_to.strip():
+                directed_to = 'A QUIEN INTERESE'
+            
             hire_day_words = num_to_words(colaborador.hire_date.day) if colaborador.hire_date else ''
             hire_month = MONTHS[colaborador.hire_date.month] if colaborador.hire_date else ''
             hire_year = str(colaborador.hire_date.year) if colaborador.hire_date else ''
@@ -99,6 +103,7 @@ def certificate_labor(request):
             
             context = {
                 'user': colaborador,
+                'directed_to': directed_to,
                 'include_salary': include_salary,
                 'today': today,
                 'today_day_words': today_day_words,

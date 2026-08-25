@@ -68,6 +68,9 @@ def console_individual(request):
                 if exit_dt < turn_end_datetime:
                     early_time = turn_end_datetime - exit_dt
                     permission_hours = round(early_time.total_seconds() / 3600.0, 2)
+            elif exit_dt and not turn_of_day:
+                # Si trabajó en un día de descanso (sin turno asignado), todas las horas son extras
+                extra_hours = hours_worked
 
             if justification_type and justification_type != 'NORMAL':
                 status = AttendanceStatus.A_TIEMPO.value
@@ -160,6 +163,9 @@ def console_massive(request):
                         if exit_dt < turn_end_datetime:
                             early_time = turn_end_datetime - exit_dt
                             permission_hours = round(early_time.total_seconds() / 3600.0, 2)
+                    elif exit_dt and not turn_of_day:
+                        # Si trabajó en un día de descanso (sin turno asignado), todas las horas son extras
+                        extra_hours = hours_worked
 
                     if just_type and just_type != 'NORMAL':
                         status = AttendanceStatus.A_TIEMPO.value

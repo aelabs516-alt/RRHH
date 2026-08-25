@@ -226,5 +226,9 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
         worked_time = exit_datetime - attendance.entry_time
         attendance.hours_worked = round(worked_time.total_seconds() / 3600.0, 2)
         
+    if not turn and attendance.hours_worked > 0:
+        # Si trabajó en un día de descanso (sin turno), todo es hora extra
+        attendance.extra_hours = attendance.hours_worked
+        
     attendance.save()
     return attendance

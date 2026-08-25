@@ -211,6 +211,7 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
     attendance.exit_time = exit_datetime
     if photo: attendance.exit_photo = photo
     attendance.extra_hours = round(extra_hours, 2)
+    attendance.permission_hours = round(permission_hours, 2)
     attendance.observations = observations
     
     if lat is not None and lng is not None:

@@ -99,6 +99,10 @@ def dashboard(request):
     for p in perm_qs.exclude(category='VACACIONES'):
         diff = p.end_date - p.start_date
         total_permisos += diff.total_seconds() / 3600.0
+        
+    # Añadir horas de salidas tempranas registradas en asistencia
+    early_departures = att_qs.aggregate(Sum('permission_hours'))['permission_hours__sum'] or 0
+    total_permisos += float(early_departures)
 
     llegadas_tarde = att_qs.filter(entry_status=AttendanceStatus.RETARDO).count()
     
@@ -168,7 +172,10 @@ def dashboard(request):
         for p in c_pqs:
             c_perms += (p.end_date - p.start_date).total_seconds() / 3600.0
             
-        balance = c_extras - c_perms
+        c_early = c_att.aggregate(Sum('permission_hours'))['permission_hours__sum'] or 0
+        c_perms += float(c_early)
+            
+        balance = float(c_extras) - c_perms
         state = 'A favor' if balance > 0 else ('En contra' if balance < 0 else 'Al día')
         
         matrix = c.turns.last()

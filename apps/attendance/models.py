@@ -22,6 +22,7 @@ class Attendance(models.Model):
     # Cálculos Automáticos
     hours_worked = models.DecimalField('Horas Trabajadas', max_digits=5, decimal_places=2, default=0)
     extra_hours = models.DecimalField('Horas Extras', max_digits=5, decimal_places=2, default=0)
+    permission_hours = models.DecimalField('Horas de Permiso (Salida Temprano)', max_digits=5, decimal_places=2, default=0)
     
     # Geolocalización
     latitude = models.DecimalField('Latitud', max_digits=10, decimal_places=7, null=True, blank=True)

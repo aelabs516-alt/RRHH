@@ -13,6 +13,10 @@ def get_current_turn(user, date):
     ).filter(
         models.Q(end_date__gte=date) | models.Q(end_date__isnull=True)
     ).first()
+    
+    if not matrix:
+        matrix = EmployeeTurn.objects.filter(user=user).last()
+        
     if matrix:
         return matrix.get_turn_for_date(date)
     return None
@@ -187,19 +191,33 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
     extra_hours = 0.0
     permission_hours = 0.0
     
-    if turn:
+    if turn and turn.start_time and turn.end_time and attendance.entry_time:
+        turn_start_datetime = timezone.make_aware(datetime.combine(date, turn.start_time))
         turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))
         
-        # Night shift logic: if turn ends before it starts, add 1 day to end_datetime
+        # Night shift logic
         if turn.end_time < turn.start_time:
             turn_end_datetime += timedelta(days=1)
             
-        # Evaluación de la Salida: Regla de 30 Minutos (Horas Extras)
+        turn_duration = turn_end_datetime - turn_start_datetime
+        worked_duration = exit_datetime - attendance.entry_time
+        
+        time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
+        
+        if time_balance >= 30 * 60:
+            extra_hours = time_balance / 3600.0
+        elif time_balance < 0:
+            permission_hours = abs(time_balance) / 3600.0
+            
+    elif turn and turn.end_time and not attendance.entry_time:
+        turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))
+        if turn.end_time < turn.start_time:
+            turn_end_datetime += timedelta(days=1)
+            
         extra_time = exit_datetime - turn_end_datetime
-        if extra_time.total_seconds() > 30 * 60:
+        if extra_time.total_seconds() >= 30 * 60:
             extra_hours = extra_time.total_seconds() / 3600.0
             
-        # Cálculo de horas de permiso o salida anticipada
         if exit_datetime < turn_end_datetime:
             early_time = turn_end_datetime - exit_datetime
             permission_hours = early_time.total_seconds() / 3600.0

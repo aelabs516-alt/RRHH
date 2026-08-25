@@ -58,15 +58,30 @@ def console_individual(request):
                 if entry_dt > grace_period:
                     status = AttendanceStatus.RETARDO.value
 
-            if exit_dt and turn_of_day and turn_of_day.end_time:
+            if exit_dt and entry_dt and turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
+                turn_start_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.start_time))
+                turn_end_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.end_time))
+                if turn_of_day.end_time < turn_of_day.start_time:
+                    turn_end_datetime += timedelta(days=1)
+                
+                turn_duration = turn_end_datetime - turn_start_datetime
+                worked_duration = exit_dt - entry_dt
+                
+                time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
+                
+                if time_balance >= 30 * 60:
+                    extra_hours = round(time_balance / 3600.0, 2)
+                elif time_balance < 0:
+                    permission_hours = round(abs(time_balance) / 3600.0, 2)
+            elif exit_dt and turn_of_day and turn_of_day.end_time and not entry_dt:
+                # Fallback in case entry_dt is missing somehow
                 turn_end_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.end_time))
                 if turn_of_day.end_time < turn_of_day.start_time:
                     turn_end_datetime += timedelta(days=1)
                 
                 extra_time = exit_dt - turn_end_datetime
-                if extra_time.total_seconds() > 30 * 60:
+                if extra_time.total_seconds() >= 30 * 60:
                     extra_hours = round(extra_time.total_seconds() / 3600.0, 2)
-                    
                 if exit_dt < turn_end_datetime:
                     early_time = turn_end_datetime - exit_dt
                     permission_hours = round(early_time.total_seconds() / 3600.0, 2)
@@ -155,13 +170,28 @@ def console_massive(request):
                         if entry_dt > grace_period:
                             status = AttendanceStatus.RETARDO.value
                             
-                    if exit_dt and turn_of_day and turn_of_day.end_time:
+                    if exit_dt and entry_dt and turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
+                        turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
+                        turn_end_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.end_time))
+                        if turn_of_day.end_time < turn_of_day.start_time:
+                            turn_end_datetime += timedelta(days=1)
+                        
+                        turn_duration = turn_end_datetime - turn_start_datetime
+                        worked_duration = exit_dt - entry_dt
+                        
+                        time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
+                        
+                        if time_balance >= 30 * 60:
+                            extra_hours = round(time_balance / 3600.0, 2)
+                        elif time_balance < 0:
+                            permission_hours = round(abs(time_balance) / 3600.0, 2)
+                    elif exit_dt and turn_of_day and turn_of_day.end_time and not entry_dt:
                         turn_end_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.end_time))
                         if turn_of_day.end_time < turn_of_day.start_time:
                             turn_end_datetime += timedelta(days=1)
                         
                         extra_time = exit_dt - turn_end_datetime
-                        if extra_time.total_seconds() > 30 * 60:
+                        if extra_time.total_seconds() >= 30 * 60:
                             extra_hours = round(extra_time.total_seconds() / 3600.0, 2)
                             
                         if exit_dt < turn_end_datetime:

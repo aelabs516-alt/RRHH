@@ -91,6 +91,19 @@ def console_individual(request):
 
             if justification_type and justification_type != 'NORMAL':
                 status = AttendanceStatus.A_TIEMPO.value
+                
+            REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+            if justification_type in REMUNERADOS:
+                permission_hours = 0.0
+                if turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
+                    # Calcular horas esperadas del turno
+                    t_start = datetime.combine(d, turn_of_day.start_time)
+                    t_end = datetime.combine(d, turn_of_day.end_time)
+                    if turn_of_day.end_time < turn_of_day.start_time:
+                        t_end += timedelta(days=1)
+                    expected_hours = round((t_end - t_start).total_seconds() / 3600.0, 2)
+                    if hours_worked < expected_hours:
+                        hours_worked = expected_hours
 
             Attendance.objects.update_or_create(
                 user=colaborador, date=d,
@@ -203,6 +216,18 @@ def console_massive(request):
 
                     if just_type and just_type != 'NORMAL':
                         status = AttendanceStatus.A_TIEMPO.value
+                        
+                    REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+                    if just_type in REMUNERADOS:
+                        permission_hours = 0.0
+                        if turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
+                            t_start = datetime.combine(selected_date, turn_of_day.start_time)
+                            t_end = datetime.combine(selected_date, turn_of_day.end_time)
+                            if turn_of_day.end_time < turn_of_day.start_time:
+                                t_end += timedelta(days=1)
+                            expected_hours = round((t_end - t_start).total_seconds() / 3600.0, 2)
+                            if hours_worked < expected_hours:
+                                hours_worked = expected_hours
 
                     Attendance.objects.update_or_create(
                         user=colaborador, date=selected_date,

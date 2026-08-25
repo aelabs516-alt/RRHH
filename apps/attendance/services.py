@@ -175,20 +175,23 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
     COMPANY_LNG = settings.longitude
     
     local_dt = timezone.localtime(exit_datetime)
-    date = local_dt.date()
+    
+    # Find the most recent open attendance (handles night shifts crossing midnight)
+    attendance = Attendance.objects.filter(user=user, exit_time__isnull=True).order_by('-date').first()
+    if not attendance:
+        raise ValueError("Secuencia ilógica: No tienes un ingreso pendiente por cerrar.")
+        
+    date = attendance.date
     turn = get_current_turn(user, date)
     if not turn:
-        raise ValueError("El usuario no tiene un turno asignado para esta fecha.")
-        
-    attendance = Attendance.objects.filter(user=user, date=date).first()
-    if not attendance:
-        raise ValueError("Secuencia ilógica: No se puede marcar salida sin un ingreso previo hoy.")
-    
-    if attendance.exit_time:
-        raise ValueError("Secuencia ilógica: Ya existe una salida registrada hoy.")
+        raise ValueError("El usuario no tiene un turno asignado para la fecha del ingreso.")
         
     turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))
     
+    # Night shift logic: if turn ends before it starts, add 1 day to end_datetime
+    if turn.end_time < turn.start_time:
+        turn_end_datetime += timedelta(days=1)
+        
     # Evaluación de la Salida: Regla de 30 Minutos (Horas Extras)
     extra_time = exit_datetime - turn_end_datetime
     extra_hours = 0.0

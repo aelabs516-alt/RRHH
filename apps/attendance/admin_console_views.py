@@ -44,15 +44,30 @@ def console_individual(request):
                 hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
             
             status = AttendanceStatus.A_TIEMPO.value
+            extra_hours = 0.0
+            permission_hours = 0.0
             
-            if entry_dt:
-                matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=d).filter(Q(end_date__gte=d) | Q(end_date__isnull=True)).first()
-                turn_of_day = matrix.get_turn_for_date(d) if matrix else None
-                if turn_of_day and turn_of_day.start_time:
-                    turn_start_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.start_time))
-                    grace_period = turn_start_datetime + timedelta(minutes=5)
-                    if entry_dt > grace_period:
-                        status = AttendanceStatus.RETARDO.value
+            matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=d).filter(Q(end_date__gte=d) | Q(end_date__isnull=True)).first()
+            turn_of_day = matrix.get_turn_for_date(d) if matrix else None
+            
+            if entry_dt and turn_of_day and turn_of_day.start_time:
+                turn_start_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.start_time))
+                grace_period = turn_start_datetime + timedelta(minutes=5)
+                if entry_dt > grace_period:
+                    status = AttendanceStatus.RETARDO.value
+
+            if exit_dt and turn_of_day and turn_of_day.end_time:
+                turn_end_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.end_time))
+                if turn_of_day.end_time < turn_of_day.start_time:
+                    turn_end_datetime += timedelta(days=1)
+                
+                extra_time = exit_dt - turn_end_datetime
+                if extra_time.total_seconds() > 30 * 60:
+                    extra_hours = round(extra_time.total_seconds() / 3600.0, 2)
+                    
+                if exit_dt < turn_end_datetime:
+                    early_time = turn_end_datetime - exit_dt
+                    permission_hours = round(early_time.total_seconds() / 3600.0, 2)
 
             if justification_type and justification_type != 'NORMAL':
                 status = AttendanceStatus.A_TIEMPO.value
@@ -63,6 +78,8 @@ def console_individual(request):
                     'entry_time': entry_dt,
                     'exit_time': exit_dt,
                     'hours_worked': hours_worked,
+                    'extra_hours': extra_hours,
+                    'permission_hours': permission_hours,
                     'justification_type': justification_type,
                     'observations': observations,
                     'entry_status': status
@@ -119,15 +136,30 @@ def console_massive(request):
                         hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
                         
                     status = AttendanceStatus.A_TIEMPO.value
-                    if entry_dt:
-                        matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
-                        turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
+                    extra_hours = 0.0
+                    permission_hours = 0.0
+                    
+                    matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
+                    turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
+                    
+                    if entry_dt and turn_of_day and turn_of_day.start_time:
+                        turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
+                        grace_period = turn_start_datetime + timedelta(minutes=5)
+                        if entry_dt > grace_period:
+                            status = AttendanceStatus.RETARDO.value
+                            
+                    if exit_dt and turn_of_day and turn_of_day.end_time:
+                        turn_end_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.end_time))
+                        if turn_of_day.end_time < turn_of_day.start_time:
+                            turn_end_datetime += timedelta(days=1)
                         
-                        if turn_of_day and turn_of_day.start_time:
-                            turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
-                            grace_period = turn_start_datetime + timedelta(minutes=5)
-                            if entry_dt > grace_period:
-                                status = AttendanceStatus.RETARDO.value
+                        extra_time = exit_dt - turn_end_datetime
+                        if extra_time.total_seconds() > 30 * 60:
+                            extra_hours = round(extra_time.total_seconds() / 3600.0, 2)
+                            
+                        if exit_dt < turn_end_datetime:
+                            early_time = turn_end_datetime - exit_dt
+                            permission_hours = round(early_time.total_seconds() / 3600.0, 2)
 
                     if just_type and just_type != 'NORMAL':
                         status = AttendanceStatus.A_TIEMPO.value
@@ -138,6 +170,8 @@ def console_massive(request):
                             'entry_time': entry_dt,
                             'exit_time': exit_dt,
                             'hours_worked': hours_worked,
+                            'extra_hours': extra_hours,
+                            'permission_hours': permission_hours,
                             'justification_type': just_type,
                             'observations': obs,
                             'entry_status': status

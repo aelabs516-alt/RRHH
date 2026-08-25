@@ -87,7 +87,7 @@
     </table>
     
     <div class="content">
-        <div class="field-row"><span class="field-label">Fecha del Acta:</span> {{ act.date_created|date:"d de F de Y" }}</div>
+        <div class="field-row"><span class="field-label">Fecha del Acta:</span> {{ act.date_created|date:"d" }} de {{ act.date_created|date:"F" }} de {{ act.date_created|date:"Y" }}</div>
         <div class="field-row"><span class="field-label">Colaborador:</span> {{ act.user.get_full_name }}</div>
         <div class="field-row"><span class="field-label">Documento:</span> {{ act.user.document_number }}</div>
         <div class="field-row"><span class="field-label">Cargo:</span> {{ act.user.position.name|default:"N/A" }}</div>

@@ -1,9 +1,9 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
 from apps.users.models import User
-from .models import Attendance
+from .models import Attendance, AttendanceStatus
 from apps.organization.models import EmployeeTurn
 from django.utils import timezone
 from django.db.models import Q
@@ -33,9 +33,6 @@ def console_individual(request):
             if entry_dt and exit_dt:
                 hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
             
-            # Recalculate entry_status
-            from apps.attendance.models import AttendanceStatus
-            from datetime import timedelta
             status = AttendanceStatus.A_TIEMPO
             
             if entry_dt:
@@ -96,10 +93,6 @@ def console_massive(request):
                 if entry_dt and exit_dt:
                     hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
                     
-                # Recalculate entry_status
-                from apps.attendance.models import AttendanceStatus
-                from datetime import timedelta
-                
                 status = AttendanceStatus.A_TIEMPO
                 if entry_dt:
                     matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()

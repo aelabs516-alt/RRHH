@@ -252,6 +252,15 @@ class ActCreateView(LoginRequiredMixin, CreateView):
         ctx['title'] = 'Crear Acta Disciplinaria'
         return ctx
 
+    def form_valid(self, form):
+        # Attach the manager's signature
+        user_obj = form.cleaned_data.get('user')
+        if user_obj and user_obj.manager and user_obj.manager.signature:
+            form.instance.manager_signature = user_obj.manager.signature
+        elif self.request.user.signature:
+            form.instance.manager_signature = self.request.user.signature
+        return super().form_valid(form)
+
 class ActUpdateView(LoginRequiredMixin, UpdateView):
     model = DisciplinaryAct
     fields = ['employee_defense']

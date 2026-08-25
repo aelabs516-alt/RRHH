@@ -116,7 +116,7 @@
         <tr>
             <td class="signature-td">
                 {% if act.manager_signature %}
-                    <img src="{{ act.manager_signature.url }}" class="signature-img"><br>
+                    <img src="{{ act.manager_signature.path }}" class="signature-img"><br>
                 {% else %}
                     <br><br><br>
                 {% endif %}
@@ -126,7 +126,7 @@
             </td>
             <td class="signature-td">
                 {% if act.employee_signature %}
-                    <img src="{{ act.employee_signature.url }}" class="signature-img"><br>
+                    <img src="{{ act.employee_signature.path }}" class="signature-img"><br>
                 {% else %}
                     <br><br><br>
                 {% endif %}

@@ -48,6 +48,8 @@ def console_individual(request):
             permission_hours = 0.0
             
             matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=d).filter(Q(end_date__gte=d) | Q(end_date__isnull=True)).first()
+            if not matrix:
+                matrix = EmployeeTurn.objects.filter(user=colaborador).last()
             turn_of_day = matrix.get_turn_for_date(d) if matrix else None
             
             if entry_dt and turn_of_day and turn_of_day.start_time:
@@ -143,6 +145,8 @@ def console_massive(request):
                     permission_hours = 0.0
                     
                     matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
+                    if not matrix:
+                        matrix = EmployeeTurn.objects.filter(user=colaborador).last()
                     turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
                     
                     if entry_dt and turn_of_day and turn_of_day.start_time:
@@ -200,6 +204,8 @@ def console_massive(request):
     for u in users:
         # Find active turn matrix
         matrix = EmployeeTurn.objects.filter(user=u, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
+        if not matrix:
+            matrix = EmployeeTurn.objects.filter(user=u).last()
         turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
         turn_str = turn_of_day.name if turn_of_day else "Sin Turno"
         

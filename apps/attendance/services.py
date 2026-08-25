@@ -111,7 +111,8 @@ def process_entry(user, entry_datetime, photo=None, lat=None, lng=None):
     COMPANY_LAT = settings.latitude
     COMPANY_LNG = settings.longitude
     
-    date = entry_datetime.date()
+    local_dt = timezone.localtime(entry_datetime)
+    date = local_dt.date()
     turn = get_current_turn(user, date)
     if not turn:
         raise ValueError("El usuario no tiene un turno asignado para esta fecha.")
@@ -169,7 +170,8 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
     COMPANY_LAT = settings.latitude
     COMPANY_LNG = settings.longitude
     
-    date = exit_datetime.date()
+    local_dt = timezone.localtime(exit_datetime)
+    date = local_dt.date()
     turn = get_current_turn(user, date)
     if not turn:
         raise ValueError("El usuario no tiene un turno asignado para esta fecha.")

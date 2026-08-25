@@ -101,7 +101,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'es-co'
-TIME_ZONE = os.environ.get('TZ', 'America/Bogota')
+TIME_ZONE = 'America/Bogota'
 USE_I18N = True
 USE_TZ = True
 

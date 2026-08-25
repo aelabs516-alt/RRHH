@@ -18,8 +18,8 @@ def console_individual(request):
         reg_date = request.POST.get('date')
         entry_time = request.POST.get('entry_time')
         exit_time = request.POST.get('exit_time')
-        justification_type = request.POST.get('justification_type')
-        observations = request.POST.get('observations')
+        justification_type = request.POST.get('justification_type', 'NORMAL')
+        observations = request.POST.get('observations', '')
 
         try:
             colaborador = User.objects.get(id=user_id)
@@ -33,7 +33,7 @@ def console_individual(request):
             if entry_dt and exit_dt:
                 hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
             
-            status = AttendanceStatus.A_TIEMPO
+            status = AttendanceStatus.A_TIEMPO.value
             
             if entry_dt:
                 matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=d).filter(Q(end_date__gte=d) | Q(end_date__isnull=True)).first()
@@ -42,10 +42,10 @@ def console_individual(request):
                     turn_start_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.start_time))
                     grace_period = turn_start_datetime + timedelta(minutes=5)
                     if entry_dt > grace_period:
-                        status = AttendanceStatus.RETARDO
+                        status = AttendanceStatus.RETARDO.value
 
             if justification_type and justification_type != 'NORMAL':
-                status = AttendanceStatus.A_TIEMPO
+                status = AttendanceStatus.A_TIEMPO.value
 
             Attendance.objects.update_or_create(
                 user=colaborador, date=d,
@@ -81,8 +81,8 @@ def console_massive(request):
         for uid in user_ids:
             entry_time = request.POST.get(f'entry_{uid}')
             exit_time = request.POST.get(f'exit_{uid}')
-            just_type = request.POST.get(f'just_{uid}')
-            obs = request.POST.get(f'obs_{uid}')
+            just_type = request.POST.get(f'just_{uid}', 'NORMAL')
+            obs = request.POST.get(f'obs_{uid}', '')
 
             if entry_time or exit_time:
                 colaborador = User.objects.get(id=uid)
@@ -93,7 +93,7 @@ def console_massive(request):
                 if entry_dt and exit_dt:
                     hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
                     
-                status = AttendanceStatus.A_TIEMPO
+                status = AttendanceStatus.A_TIEMPO.value
                 if entry_dt:
                     matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
                     turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
@@ -102,11 +102,11 @@ def console_massive(request):
                         turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
                         grace_period = turn_start_datetime + timedelta(minutes=5)
                         if entry_dt > grace_period:
-                            status = AttendanceStatus.RETARDO
+                            status = AttendanceStatus.RETARDO.value
 
                 # Si hay justificación válida, se limpia la llegada tarde para que no afecte alertas
                 if just_type and just_type != 'NORMAL':
-                    status = AttendanceStatus.A_TIEMPO
+                    status = AttendanceStatus.A_TIEMPO.value
 
                 Attendance.objects.update_or_create(
                     user=colaborador, date=selected_date,

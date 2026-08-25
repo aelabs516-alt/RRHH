@@ -25,9 +25,19 @@ def console_individual(request):
             colaborador = User.objects.get(id=user_id)
             d = datetime.strptime(reg_date, '%Y-%m-%d').date()
             
-            # Simple hours calculation since it's manual admin intervention
-            entry_dt = timezone.make_aware(datetime.combine(d, datetime.strptime(entry_time, '%H:%M').time())) if entry_time else None
-            exit_dt = timezone.make_aware(datetime.combine(d, datetime.strptime(exit_time, '%H:%M').time())) if exit_time else None
+            def parse_time(time_str):
+                if not time_str: return None
+                time_str = time_str.strip()
+                try:
+                    return datetime.strptime(time_str, '%H:%M:%S').time()
+                except ValueError:
+                    return datetime.strptime(time_str, '%H:%M').time()
+
+            e_time = parse_time(entry_time)
+            x_time = parse_time(exit_time)
+            
+            entry_dt = timezone.make_aware(datetime.combine(d, e_time)) if e_time else None
+            exit_dt = timezone.make_aware(datetime.combine(d, x_time)) if x_time else None
             
             hours_worked = 0.0
             if entry_dt and exit_dt:
@@ -38,7 +48,7 @@ def console_individual(request):
             if entry_dt:
                 matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=d).filter(Q(end_date__gte=d) | Q(end_date__isnull=True)).first()
                 turn_of_day = matrix.get_turn_for_date(d) if matrix else None
-                if turn_of_day:
+                if turn_of_day and turn_of_day.start_time:
                     turn_start_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.start_time))
                     grace_period = turn_start_datetime + timedelta(minutes=5)
                     if entry_dt > grace_period:
@@ -59,9 +69,11 @@ def console_individual(request):
                 }
             )
             messages.success(request, 'Registro individual guardado correctamente.')
-            return redirect('console_individual')
+            return redirect('attendance:console_individual')
         except Exception as e:
-            messages.error(request, f'Error: {e}')
+            import traceback
+            messages.error(request, f'Error: {repr(e)}. {traceback.format_exc()}')
+            return redirect('attendance:console_individual')
 
     users = User.objects.filter(is_active=True, role='COLABORADOR')
     return render(request, 'attendance/console_individual.html', {'users': users, 'today': date.today().strftime('%Y-%m-%d')})
@@ -73,56 +85,73 @@ def console_massive(request):
     selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
 
     if request.method == 'POST':
-        selected_date_str = request.POST.get('date')
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-        user_ids = request.POST.getlist('user_ids')
-        
-        count = 0
-        for uid in user_ids:
-            entry_time = request.POST.get(f'entry_{uid}')
-            exit_time = request.POST.get(f'exit_{uid}')
-            just_type = request.POST.get(f'just_{uid}', 'NORMAL')
-            obs = request.POST.get(f'obs_{uid}', '')
+        try:
+            selected_date_str = request.POST.get('date')
+            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+            user_ids = request.POST.getlist('user_ids')
+            
+            def parse_time(time_str):
+                if not time_str: return None
+                time_str = time_str.strip()
+                try:
+                    return datetime.strptime(time_str, '%H:%M:%S').time()
+                except ValueError:
+                    return datetime.strptime(time_str, '%H:%M').time()
 
-            if entry_time or exit_time:
-                colaborador = User.objects.get(id=uid)
-                entry_dt = timezone.make_aware(datetime.combine(selected_date, datetime.strptime(entry_time, '%H:%M').time())) if entry_time else None
-                exit_dt = timezone.make_aware(datetime.combine(selected_date, datetime.strptime(exit_time, '%H:%M').time())) if exit_time else None
-                
-                hours_worked = 0.0
-                if entry_dt and exit_dt:
-                    hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
-                    
-                status = AttendanceStatus.A_TIEMPO.value
-                if entry_dt:
-                    matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
-                    turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
-                    
-                    if turn_of_day:
-                        turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
-                        grace_period = turn_start_datetime + timedelta(minutes=5)
-                        if entry_dt > grace_period:
-                            status = AttendanceStatus.RETARDO.value
+            count = 0
+            for uid in user_ids:
+                entry_time = request.POST.get(f'entry_{uid}')
+                exit_time = request.POST.get(f'exit_{uid}')
+                just_type = request.POST.get(f'just_{uid}', 'NORMAL')
+                obs = request.POST.get(f'obs_{uid}', '')
 
-                # Si hay justificación válida, se limpia la llegada tarde para que no afecte alertas
-                if just_type and just_type != 'NORMAL':
+                if entry_time or exit_time:
+                    colaborador = User.objects.get(id=uid)
+                    
+                    e_time = parse_time(entry_time)
+                    x_time = parse_time(exit_time)
+                    
+                    entry_dt = timezone.make_aware(datetime.combine(selected_date, e_time)) if e_time else None
+                    exit_dt = timezone.make_aware(datetime.combine(selected_date, x_time)) if x_time else None
+                    
+                    hours_worked = 0.0
+                    if entry_dt and exit_dt:
+                        hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
+                        
                     status = AttendanceStatus.A_TIEMPO.value
+                    if entry_dt:
+                        matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
+                        turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
+                        
+                        if turn_of_day and turn_of_day.start_time:
+                            turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
+                            grace_period = turn_start_datetime + timedelta(minutes=5)
+                            if entry_dt > grace_period:
+                                status = AttendanceStatus.RETARDO.value
 
-                Attendance.objects.update_or_create(
-                    user=colaborador, date=selected_date,
-                    defaults={
-                        'entry_time': entry_dt,
-                        'exit_time': exit_dt,
-                        'hours_worked': hours_worked,
-                        'justification_type': just_type,
-                        'observations': obs,
-                        'entry_status': status
-                    }
-                )
-                count += 1
-                
-        messages.success(request, f'Se registraron/actualizaron {count} asistencias.')
-        return redirect(f"{request.path}?date={selected_date_str}")
+                    if just_type and just_type != 'NORMAL':
+                        status = AttendanceStatus.A_TIEMPO.value
+
+                    Attendance.objects.update_or_create(
+                        user=colaborador, date=selected_date,
+                        defaults={
+                            'entry_time': entry_dt,
+                            'exit_time': exit_dt,
+                            'hours_worked': hours_worked,
+                            'justification_type': just_type,
+                            'observations': obs,
+                            'entry_status': status
+                        }
+                    )
+                    count += 1
+                    
+            messages.success(request, f'Se registraron/actualizaron {count} asistencias.')
+            return redirect(f"{request.path}?date={selected_date_str}")
+        except Exception as e:
+            import traceback
+            error_msg = f"Error en sistema: {repr(e)}. Detalles: {traceback.format_exc()}"
+            messages.error(request, error_msg)
+            return redirect(f"{request.path}?date={request.POST.get('date', date.today().strftime('%Y-%m-%d'))}")
 
     users = User.objects.filter(is_active=True, role='COLABORADOR')
     

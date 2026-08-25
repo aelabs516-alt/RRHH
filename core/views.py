@@ -185,6 +185,9 @@ class PermissionCreateView(LoginRequiredMixin, CreateView):
     
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
+        from django import forms
+        form.fields['start_date'].widget = forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'})
+        form.fields['end_date'].widget = forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'})
         if self.request.user.role not in ['ADMIN', 'JEFE'] and not self.request.user.is_superuser:
             form.fields['user'].queryset = User.objects.filter(id=self.request.user.id)
             form.fields['user'].initial = self.request.user
@@ -203,6 +206,9 @@ class PermissionUpdateView(LoginRequiredMixin, UpdateView):
     
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
+        from django import forms
+        form.fields['start_date'].widget = forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'})
+        form.fields['end_date'].widget = forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'})
         if self.request.user.role not in ['ADMIN', 'JEFE'] and not self.request.user.is_superuser:
             form.fields['user'].queryset = User.objects.filter(id=self.request.user.id)
         return form

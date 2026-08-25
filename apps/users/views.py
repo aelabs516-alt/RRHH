@@ -330,13 +330,15 @@ class UserUpdateView(LoginRequiredMixin, UpdateView):
         ctx['turns'] = Turn.objects.all()
         
         matrix = self.object.turns.last()
-        ctx['t_monday'] = matrix.turn_monday_id if matrix else None
-        ctx['t_tuesday'] = matrix.turn_tuesday_id if matrix else None
-        ctx['t_wednesday'] = matrix.turn_wednesday_id if matrix else None
-        ctx['t_thursday'] = matrix.turn_thursday_id if matrix else None
-        ctx['t_friday'] = matrix.turn_friday_id if matrix else None
-        ctx['t_saturday'] = matrix.turn_saturday_id if matrix else None
-        ctx['t_sunday'] = matrix.turn_sunday_id if matrix else None
+        ctx['current_turns'] = {
+            'monday': matrix.turn_monday_id if matrix else None,
+            'tuesday': matrix.turn_tuesday_id if matrix else None,
+            'wednesday': matrix.turn_wednesday_id if matrix else None,
+            'thursday': matrix.turn_thursday_id if matrix else None,
+            'friday': matrix.turn_friday_id if matrix else None,
+            'saturday': matrix.turn_saturday_id if matrix else None,
+            'sunday': matrix.turn_sunday_id if matrix else None,
+        }
         
         return ctx
 

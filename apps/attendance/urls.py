@@ -11,4 +11,5 @@ urlpatterns = [
     path('api/process/', views.process_attendance_api, name='process_api'),
     path('console/individual/', admin_console_views.console_individual, name='console_individual'),
     path('console/massive/', admin_console_views.console_massive, name='console_massive'),
+    path('console/delete/<int:pk>/', admin_console_views.delete_attendance, name='delete_attendance'),
 ]

@@ -69,7 +69,14 @@
                         </select>
                     </td>
                     <td><input type="text" name="obs_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.observations|default:'' }}"></td>
-                    <td class="calculated-hours-cell text-center align-middle fw-bold" id="hr_{{ d.user.id }}">{{ d.attendance.hours_worked|default:'0' }} h</td>
+                    <td class="calculated-hours-cell text-center align-middle" id="hr_{{ d.user.id }}">
+                        <span class="fw-bold">{{ d.attendance.hours_worked|default:'0' }} h</span>
+                        {% if d.attendance %}
+                        <a href="{% url 'attendance:delete_attendance' d.attendance.id %}" class="btn btn-sm btn-outline-danger ms-2" title="Eliminar este registro" onclick="return confirm('¿Estás seguro de eliminar la marcación de {{ d.user.first_name }}?')">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -86,15 +93,18 @@
             const hrDisplay = row.querySelector('td.calculated-hours-cell');
             
             function calcHours() {
+                let span = hrDisplay.querySelector('span.fw-bold');
+                if (!span) return;
+                
                 if (entryInput.value && exitInput.value) {
                     const start = new Date("1970-01-01T" + entryInput.value + ":00");
                     const end = new Date("1970-01-01T" + exitInput.value + ":00");
                     let diff = (end - start) / (1000 * 60 * 60);
                     if (diff < 0) diff += 24;
-                    hrDisplay.innerText = diff.toFixed(2) + " h";
-                    hrDisplay.classList.add('text-success');
+                    span.innerText = diff.toFixed(2) + " h";
+                    span.classList.add('text-success');
                 } else {
-                    hrDisplay.classList.remove('text-success');
+                    span.classList.remove('text-success');
                 }
             }
             

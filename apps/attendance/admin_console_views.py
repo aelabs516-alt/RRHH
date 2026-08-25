@@ -119,3 +119,14 @@ def console_massive(request):
         'user_data': user_data, 
         'selected_date': selected_date_str
     })
+
+@user_passes_test(is_admin)
+def delete_attendance(request, pk):
+    try:
+        att = Attendance.objects.get(pk=pk)
+        att.delete()
+        messages.success(request, 'Registro de marcacin eliminado correctamente.')
+    except Attendance.DoesNotExist:
+        messages.error(request, 'El registro no existe.')
+    return redirect(request.META.get('HTTP_REFERER', 'attendance:console_massive'))
+

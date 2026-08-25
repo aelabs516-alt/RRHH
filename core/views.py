@@ -174,6 +174,7 @@ class PermissionListView(LoginRequiredMixin, ListView):
         if self.request.user.role in ['ADMIN', 'JEFE'] or self.request.user.is_superuser:
             ctx['update_url'] = 'permissions_update'
             ctx['search_enabled'] = True
+            ctx['delete_url_name'] = 'permissions_delete'
             
         return ctx
 
@@ -216,6 +217,17 @@ class PermissionUpdateView(LoginRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['title'] = 'Editar/Aprobar Permiso'
+        return ctx
+
+class PermissionDeleteView(LoginRequiredMixin, DeleteView):
+    model = Permission
+    template_name = 'crud/confirm_delete.html'
+    success_url = reverse_lazy('permissions_list')
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['title'] = 'Eliminar Solicitud de Permiso'
+        ctx['cancel_url'] = reverse_lazy('permissions_list')
         return ctx
 
 # -- ACTAS DISCIPLINARIAS --

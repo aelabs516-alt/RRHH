@@ -10,6 +10,20 @@ from .services import process_entry, process_exit
 @login_required
 def mark_attendance(request):
     """Renderiza la interfaz de marcación web con la cámara."""
+    user = request.user
+    if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
+        from apps.hr.models import DisciplinaryAct
+        from django.db.models import Q
+        from django.shortcuts import redirect
+        has_pending = DisciplinaryAct.objects.filter(
+            Q(employee_signature='') | Q(employee_signature__isnull=True),
+            user=user
+        ).exists()
+        if has_pending:
+            from django.contrib import messages
+            messages.warning(request, "Debes firmar tus actas disciplinarias pendientes antes de marcar asistencia.")
+            return redirect('acts_list')
+            
     return render(request, 'attendance/mark.html')
 
 @login_required

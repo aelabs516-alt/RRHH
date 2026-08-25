@@ -7,15 +7,49 @@ class CustomLoginView(LoginView):
     template_name = 'users/login.html'
     redirect_authenticated_user = True
 
+    def get_success_url(self):
+        url = self.get_redirect_url()
+        user = self.request.user
+        
+        from apps.hr.models import DisciplinaryAct
+        from django.db.models import Q
+        from django.contrib import messages
+        from django.urls import reverse_lazy
+        
+        # Si es colaborador, revisar actas pendientes
+        if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
+            has_pending = DisciplinaryAct.objects.filter(
+                Q(employee_signature='') | Q(employee_signature__isnull=True),
+                user=user
+            ).exists()
+            
+            if has_pending:
+                messages.warning(self.request, "Tienes actas disciplinarias pendientes por revisar y firmar.")
+                return reverse_lazy('acts_list')
+                
+        return url or reverse_lazy('dashboard')
+
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models import Sum, Count, Q, F
+from django.shortcuts import redirect
 from apps.attendance.models import Attendance, Permission, AttendanceStatus
 from apps.hr.models import DisciplinaryAct
 
 @login_required
 def dashboard(request):
     user = request.user
+    
+    # Check for pending acts on dashboard entry for collaborators
+    if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
+        has_pending = DisciplinaryAct.objects.filter(
+            Q(employee_signature='') | Q(employee_signature__isnull=True),
+            user=user
+        ).exists()
+        if has_pending:
+            from django.contrib import messages
+            messages.warning(request, "Tienes actas disciplinarias pendientes por revisar y firmar.")
+            return redirect('acts_list')
     
     # Parámetros de filtrado
     year = request.GET.get('year')

@@ -108,7 +108,7 @@ def dashboard(request):
     # Ordenar por balance
     vacaciones_por_colab = sorted(vacaciones_por_colab, key=lambda x: x['balance'], reverse=True)[:10]
 
-    # Panel de Auditoría: Retardos críticos (esta semana)
+    # Panel de Auditoría: Retardos (esta semana)
     start_of_week = now.date() - timedelta(days=now.date().weekday())
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
@@ -116,7 +116,7 @@ def dashboard(request):
     
     critical_tardies = Attendance.objects.filter(
         date__gte=start_of_week, entry_status=AttendanceStatus.RETARDO
-    ).exclude(user__id__in=users_with_acts).values('user__first_name', 'user__last_name', 'user__document_number').annotate(count=Count('id')).filter(count__gte=3)
+    ).exclude(user__id__in=users_with_acts).values('user__first_name', 'user__last_name', 'user__document_number').annotate(count=Count('id')).order_by('-count')
     
     # Alerta de Geolocalización: Marcaciones fuera de la empresa (Hoy)
     out_of_bounds_alerts = Attendance.objects.filter(

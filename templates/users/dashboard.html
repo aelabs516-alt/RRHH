@@ -216,6 +216,41 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Panel de Ausencias del Día -->
+<div class="card shadow-sm mb-4 border-dark border-2">
+    <div class="card-header text-dark fw-bold">
+        <i class="fas fa-user-times"></i> Panel de Auditoría: Ausencias y Faltas ({{ target_date_str }})
+    </div>
+    <div class="card-body">
+        {% if absencias_hoy %}
+        <table class="table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Turno Asignado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for abs in absencias_hoy %}
+                <tr>
+                    <td>{{ abs.name }}</td>
+                    <td class="text-danger fw-bold">{{ abs.turn }}</td>
+                    <td>
+                        <a href="{% url 'attendance:console_massive' %}?date={{ target_date_str }}" class="btn btn-sm btn-outline-dark">
+                            Ir a Consola
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No se detectan ausencias injustificadas para la fecha consultada.</p>
+        {% endif %}
+    </div>
+</div>
 {% endif %}
 
 <!-- Consolidado Neto -->

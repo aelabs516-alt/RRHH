@@ -191,6 +191,27 @@ def dashboard(request):
             'state': state
         })
 
+    # Cacular ausencias (Faltas o no llegadas) para la fecha seleccionada o hoy
+    from apps.attendance.services import get_current_turn
+    target_date = date(int(year), int(month), int(day)) if (year and month and day) else now.date()
+    absencias_hoy = []
+    
+    if user.role in ['ADMIN', 'JEFE'] or user.is_superuser:
+        for c in collabs:
+            # Solo si tiene turno hoy
+            turn = get_current_turn(c, target_date)
+            if turn:
+                # Verificar si no ha marcado entrada
+                if not Attendance.objects.filter(user=c, date=target_date, entry_time__isnull=False).exists():
+                    # Verificar si no tiene un permiso aprobado que lo justifique
+                    has_perm = False
+                    for p in Permission.objects.filter(user=c, status='APROBADO'):
+                        if p.start_date.date() <= target_date <= p.end_date.date():
+                            has_perm = True
+                            break
+                    if not has_perm:
+                        absencias_hoy.append({'name': c.get_full_name(), 'turn': f"{turn.start_time.strftime('%H:%M')} - {turn.end_time.strftime('%H:%M')}"})
+
     context = {
         'is_admin': user.role in ['ADMIN', 'JEFE'] or user.is_superuser,
         'users': User.objects.filter(is_active=True),
@@ -205,6 +226,7 @@ def dashboard(request):
         'vacs_chart': vacaciones_por_colab,
         'critical_tardies': critical_tardies,
         'out_of_bounds_alerts': out_of_bounds_alerts,
+        'absencias_hoy': absencias_hoy,
         'net_table': net_table,
         
         # Filtros seleccionados
@@ -212,6 +234,7 @@ def dashboard(request):
         'f_month': month,
         'f_day': day,
         'f_collab': collab_id,
+        'target_date_str': target_date.strftime('%Y-%m-%d'),
     }
     
     return render(request, 'users/dashboard.html', context)

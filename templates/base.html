@@ -47,13 +47,18 @@
         }
         
         .sidebar { 
-            height: 100vh;
-            position: sticky;
-            top: 0;
-            overflow-y: auto;
             background-color: var(--sidebar-bg); 
             border-right: 1px solid var(--sidebar-border);
             transition: all 0.3s ease;
+        }
+        
+        @media (min-width: 992px) {
+            .sidebar {
+                height: 100vh;
+                position: sticky !important;
+                top: 0;
+                overflow-y: auto;
+            }
         }
         /* Custom slim scrollbar for the sidebar */
         .sidebar::-webkit-scrollbar {

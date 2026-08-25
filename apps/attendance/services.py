@@ -90,6 +90,10 @@ import math
 def calculate_distance(lat1, lon1, lat2, lon2):
     # Radio de la Tierra en metros
     R = 6371000 
+    
+    # Asegurar que todos sean float (para evitar error entre decimal.Decimal y float)
+    lat1, lon1, lat2, lon2 = float(lat1), float(lon1), float(lat2), float(lon2)
+    
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     delta_phi = math.radians(lat2 - lat1)

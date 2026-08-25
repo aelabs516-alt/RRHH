@@ -251,7 +251,7 @@ from apps.organization.models import Turn, EmployeeTurn
 
 class UserCreateView(LoginRequiredMixin, CreateView):
     model = User
-    fields = ['document_number', 'first_name', 'last_name', 'role', 'position', 'area', 'manager', 'salary', 'birth_date', 'hire_date', 'emergency_contact', 'emergency_contact_number']
+    fields = ['document_number', 'first_name', 'last_name', 'role', 'position', 'area', 'manager', 'salary', 'birth_date', 'hire_date', 'emergency_contact', 'emergency_contact_number', 'signature']
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('users_list')
     
@@ -295,7 +295,7 @@ class UserCreateView(LoginRequiredMixin, CreateView):
 
 class UserUpdateView(LoginRequiredMixin, UpdateView):
     model = User
-    fields = ['document_number', 'first_name', 'last_name', 'role', 'position', 'area', 'manager', 'salary', 'birth_date', 'hire_date', 'emergency_contact', 'emergency_contact_number', 'is_active']
+    fields = ['document_number', 'first_name', 'last_name', 'role', 'position', 'area', 'manager', 'salary', 'birth_date', 'hire_date', 'emergency_contact', 'emergency_contact_number', 'signature', 'is_active']
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('users_list')
     

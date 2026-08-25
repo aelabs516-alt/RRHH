@@ -182,6 +182,14 @@ class PermissionCreateView(LoginRequiredMixin, CreateView):
     fields = ['user', 'category', 'start_date', 'end_date', 'days_requested', 'reason']
     template_name = 'crud/form.html'
     success_url = reverse_lazy('permissions_list')
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        if self.request.user.role not in ['ADMIN', 'JEFE'] and not self.request.user.is_superuser:
+            form.fields['user'].queryset = User.objects.filter(id=self.request.user.id)
+            form.fields['user'].initial = self.request.user
+        return form
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['title'] = 'Crear Solicitud de Permiso'
@@ -192,6 +200,13 @@ class PermissionUpdateView(LoginRequiredMixin, UpdateView):
     fields = ['user', 'category', 'start_date', 'end_date', 'days_requested', 'reason', 'status', 'admin_observations']
     template_name = 'crud/form.html'
     success_url = reverse_lazy('permissions_list')
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        if self.request.user.role not in ['ADMIN', 'JEFE'] and not self.request.user.is_superuser:
+            form.fields['user'].queryset = User.objects.filter(id=self.request.user.id)
+        return form
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['title'] = 'Editar/Aprobar Permiso'

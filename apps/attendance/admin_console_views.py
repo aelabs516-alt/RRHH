@@ -33,9 +33,23 @@ def console_individual(request):
             if entry_dt and exit_dt:
                 hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
             
-            # The admin provides the extra/permission logic or it calculates? User said "visualizaran horas...". 
-            # I'll calculate standard and allow override, but doing simple save is fine here.
-            # To keep it simple, save basic:
+            # Recalculate entry_status
+            from apps.attendance.models import AttendanceStatus
+            from datetime import timedelta
+            status = AttendanceStatus.A_TIEMPO
+            
+            if entry_dt:
+                matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=d).filter(Q(end_date__gte=d) | Q(end_date__isnull=True)).first()
+                turn_of_day = matrix.get_turn_for_date(d) if matrix else None
+                if turn_of_day:
+                    turn_start_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.start_time))
+                    grace_period = turn_start_datetime + timedelta(minutes=5)
+                    if entry_dt > grace_period:
+                        status = AttendanceStatus.RETARDO
+
+            if justification_type and justification_type != 'NORMAL':
+                status = AttendanceStatus.A_TIEMPO
+
             Attendance.objects.update_or_create(
                 user=colaborador, date=d,
                 defaults={
@@ -43,7 +57,8 @@ def console_individual(request):
                     'exit_time': exit_dt,
                     'hours_worked': hours_worked,
                     'justification_type': justification_type,
-                    'observations': observations
+                    'observations': observations,
+                    'entry_status': status
                 }
             )
             messages.success(request, 'Registro individual guardado correctamente.')
@@ -81,6 +96,25 @@ def console_massive(request):
                 if entry_dt and exit_dt:
                     hours_worked = round((exit_dt - entry_dt).total_seconds() / 3600.0, 2)
                     
+                # Recalculate entry_status
+                from apps.attendance.models import AttendanceStatus
+                from datetime import timedelta
+                
+                status = AttendanceStatus.A_TIEMPO
+                if entry_dt:
+                    matrix = EmployeeTurn.objects.filter(user=colaborador, start_date__lte=selected_date).filter(Q(end_date__gte=selected_date) | Q(end_date__isnull=True)).first()
+                    turn_of_day = matrix.get_turn_for_date(selected_date) if matrix else None
+                    
+                    if turn_of_day:
+                        turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
+                        grace_period = turn_start_datetime + timedelta(minutes=5)
+                        if entry_dt > grace_period:
+                            status = AttendanceStatus.RETARDO
+
+                # Si hay justificación válida, se limpia la llegada tarde para que no afecte alertas
+                if just_type and just_type != 'NORMAL':
+                    status = AttendanceStatus.A_TIEMPO
+
                 Attendance.objects.update_or_create(
                     user=colaborador, date=selected_date,
                     defaults={
@@ -88,7 +122,8 @@ def console_massive(request):
                         'exit_time': exit_dt,
                         'hours_worked': hours_worked,
                         'justification_type': just_type,
-                        'observations': obs
+                        'observations': obs,
+                        'entry_status': status
                     }
                 )
                 count += 1

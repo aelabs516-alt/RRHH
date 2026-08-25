@@ -117,58 +117,78 @@
             color: var(--bs-body-color);
         }
         .content { 
-            padding: 25px 40px; 
+            padding: 25px; 
+            max-width: 100vw;
+        }
+        
+        @media (min-width: 992px) {
+            .content { padding: 25px 40px; }
+        }
+        @media (max-width: 768px) {
+            .top-bar-capsules { flex-direction: column; align-items: end; gap: 10px !important; }
         }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <div class="d-flex">
+    <div class="d-flex w-100">
         {% if user.is_authenticated %}
-        <div class="sidebar p-3" style="width: 250px;">
-            <div class="text-center mb-3">
-                <img src="{% static 'img/logo.png' %}" alt="Logo TM" style="max-width: 100%; height: auto;">
+        <div class="sidebar offcanvas-lg offcanvas-start p-3" tabindex="-1" id="sidebarMenu" style="width: 280px; flex-shrink: 0;">
+            <div class="offcanvas-header d-lg-none border-bottom mb-3">
+                <h5 class="offcanvas-title fw-bold">Menú Principal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
             </div>
-            <hr>
-            <a href="{% url 'dashboard' %}">🏠 Dashboard</a>
-            <a href="{% url 'attendance:mark' %}">📸 Marcar Asistencia</a>
-            <a href="{% url 'acts_list' %}">⚖️ Actas Disciplinarias</a>
-            
-            <hr>
-            <h6 class="px-2 text-muted">Constancias (Nómina)</h6>
-            <a href="{% url 'certificate_labor' %}">📄 Constancia Laboral</a>
-            <a href="{% url 'download_payroll' %}">📥 Descargar Colilla PDF</a>
-            <a href="{% url 'permissions_list' %}">🏖️ Permisos y Vacaciones</a>
-            
-            {% if user.role == 'ADMIN' or user.role == 'JEFE' or user.is_superuser %}
-            <hr>
-            <h6 class="px-2 text-muted">Consola Admin (Marcaciones)</h6>
-            <a href="{% url 'attendance:console_individual' %}">👤 Marcación Individual</a>
-            <a href="{% url 'attendance:console_massive' %}">👥 Marcación Simultánea</a>
-            <a href="{% url 'attendance:map' %}">🗺️ Mapa de Marcaciones</a>
-            
-            <hr>
-            <h6 class="px-2 text-muted">Administración</h6>
-            <a href="{% url 'users_list' %}">👥 Colaboradores</a>
-            <a href="{% url 'areas_list' %}">🏢 Áreas</a>
-            <a href="{% url 'positions_list' %}">💼 Cargos</a>
-            <a href="{% url 'turns_list' %}">⏰ Turnos</a>
-            <a href="{% url 'holidays_list' %}">📅 Festivos</a>
-            <a href="{% url 'payroll_list' %}">💰 Nómina (Colillas)</a>
-            <a href="{% url 'payroll_mass_upload' %}">⬆️ Carga Masiva Nómina</a>
-            <a href="/admin/">⚙️ Configuración Avanzada</a>
-            {% endif %}
-
-            <hr>
-            <a href="{% url 'logout' %}" class="text-danger">Cerrar Sesión</a>
+            <div class="offcanvas-body d-flex flex-column p-0">
+                <div class="text-center mb-3">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo TM" style="max-width: 100%; height: auto;">
+                </div>
+                <hr>
+                <a href="{% url 'dashboard' %}">📊 Dashboard</a>
+                <a href="{% url 'attendance:mark' %}">📸 Marcar Asistencia</a>
+                <a href="{% url 'acts_list' %}">📝 Actas Disciplinarias</a>
+                
+                <hr>
+                <h6 class="px-2 text-muted">Constancias (Nómina)</h6>
+                <a href="{% url 'certificate_labor' %}">📄 Constancia Laboral</a>
+                <a href="{% url 'download_payroll' %}">💵 Descargar Colilla PDF</a>
+                <a href="{% url 'permissions_list' %}">🌴 Permisos y Vacaciones</a>
+                
+                {% if user.role == 'ADMIN' or user.role == 'JEFE' or user.is_superuser %}
+                <hr>
+                <h6 class="px-2 text-muted">Consola Admin (Marcaciones)</h6>
+                <a href="{% url 'attendance:console_individual' %}">👤 Marcación Individual</a>
+                <a href="{% url 'attendance:console_massive' %}">👥 Marcación Simultánea</a>
+                <a href="{% url 'attendance:map' %}">🗺️ Mapa de Marcaciones</a>
+                
+                <hr>
+                <h6 class="px-2 text-muted">Administración</h6>
+                <a href="{% url 'users_list' %}">👥 Colaboradores</a>
+                <a href="{% url 'areas_list' %}">🏢 Áreas</a>
+                <a href="{% url 'positions_list' %}">💼 Cargos</a>
+                <a href="{% url 'turns_list' %}">⏱️ Turnos</a>
+                <a href="{% url 'holidays_list' %}">📅 Festivos</a>
+                <a href="{% url 'payroll_list' %}">💰 Nómina (Colillas)</a>
+                <a href="{% url 'payroll_mass_upload' %}">⬆️ Carga Masiva Nómina</a>
+                <a href="{% url 'company_settings' %}">⚙️ Ajustes Empresa</a>
+                <a href="/admin/">🔐 Configuración Avanzada</a>
+                {% endif %}
+                
+                <hr class="mt-auto">
+                <a href="{% url 'logout' %}" class="text-danger">🚪 Cerrar Sesión</a>
+            </div>
         </div>
         {% endif %}
         
-        <div class="content flex-grow-1">
+        <div class="content flex-grow-1" style="min-width: 0;">
             {% if user.is_authenticated %}
             <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-                <h5 class="m-0 text-muted">Hola, {{ user.first_name }}</h5>
                 <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h5 class="m-0 text-muted d-none d-sm-block">Hola, {{ user.first_name }}</h5>
+                </div>
+                <div class="d-flex align-items-center gap-3 top-bar-capsules">
                     
                     <!-- Cápsula de Fecha -->
                     <div class="d-flex align-items-center px-3 py-2 rounded-pill shadow-sm" style="background: var(--clock-bg); border: 1px solid var(--border-color);">

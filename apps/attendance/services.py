@@ -154,7 +154,10 @@ def process_entry(user, entry_datetime, photo=None, lat=None, lng=None):
     )
     
     if not created:
-        # Actualiza si hubo un error o es sobreescritura válida (ej. reintento)
+        if attendance.entry_time is not None:
+            raise ValueError("Ya tienes un ingreso registrado para el turno de hoy. Si hay un error, contacta a tu jefe o RRHH.")
+            
+        # Actualiza si el registro existía pero sin hora de ingreso (ej. salida anticipada sin marcación de entrada)
         attendance.entry_time = entry_datetime
         attendance.entry_status = status
         if photo: attendance.entry_photo = photo

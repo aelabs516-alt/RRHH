@@ -159,9 +159,9 @@
             sourceHeight = newHeight;
         }
         
-        // Fijar dimensiones del canvas para la foto resultante
-        canvas.width = 600; // Ancho fijo recomendado
-        canvas.height = canvas.width / targetRatio; // 480 (5:4)
+        // Fijar dimensiones del canvas para la foto resultante (Comprimido)
+        canvas.width = 320; 
+        canvas.height = canvas.width / targetRatio; // 320x256
         
         const context = canvas.getContext('2d');
         // Dibujar solo la porción 5:4 del video (simulando object-fit: cover)
@@ -171,20 +171,16 @@
         const now = new Date();
         const dateTimeStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
         
-        context.font = "bold 22px Arial";
-        context.fillStyle = "rgba(255, 255, 255, 0.9)";
-        context.shadowColor = "black";
-        context.shadowBlur = 5;
-        context.shadowOffsetX = 2;
-        context.shadowOffsetY = 2;
+        context.fillStyle = "rgba(0, 0, 0, 0.5)";
+        context.fillRect(0, canvas.height - 30, canvas.width, 30);
         
-        // Esquina inferior derecha
+        context.font = "14px Arial";
+        context.fillStyle = "white";
         context.textAlign = "right";
-        context.textBaseline = "bottom";
-        context.fillText(dateTimeStr, canvas.width - 20, canvas.height - 20);
+        context.fillText(dateTimeStr, canvas.width - 10, canvas.height - 10);
         
-        // Obtener Base64
-        const photoData = canvas.toDataURL('image/jpeg', 0.8);
+        // Obtener Base64 con alta compresión (0.5 = 50% calidad JPEG)
+        const photoData = canvas.toDataURL('image/jpeg', 0.5);
 
         snapBtn.disabled = true;
         snapBtn.innerText = 'Procesando...';

@@ -37,6 +37,7 @@
                     <th>Hora Salida</th>
                     <th>Tipo Permiso</th>
                     <th>Observaciones</th>
+                    <th>Foto(s)</th>
                     <th>Horas Calculadas</th>
                 </tr>
             </thead>
@@ -69,6 +70,14 @@
                         </select>
                     </td>
                     <td><input type="text" name="obs_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.observations|default:'' }}"></td>
+                    <td class="text-center align-middle">
+                        {% if d.attendance.entry_photo %}
+                            <a href="{{ d.attendance.entry_photo.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver foto de ingreso">📥</a>
+                        {% endif %}
+                        {% if d.attendance.exit_photo %}
+                            <a href="{{ d.attendance.exit_photo.url }}" target="_blank" class="btn btn-sm btn-outline-warning mt-1" title="Ver foto de salida">📤</a>
+                        {% endif %}
+                    </td>
                     <td class="calculated-hours-cell text-center align-middle" id="hr_{{ d.user.id }}">
                         <span class="fw-bold">{{ d.attendance.hours_worked|default:'0' }} h</span>
                         {% if d.attendance %}

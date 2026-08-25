@@ -65,7 +65,7 @@
             <textarea id="observations" class="form-control" rows="2"></textarea>
         </div>
 
-        <button id="snapBtn" class="btn btn-success btn-lg">Capturar y Marcar</button>
+        <button id="snapBtn" class="btn btn-success btn-lg" disabled>Iniciando sensores...</button>
     </div>
 </div>
 {% endblock %}
@@ -80,56 +80,89 @@
     const obsContainer = document.getElementById('obsContainer');
     const obsInput = document.getElementById('observations');
 
-    // Variables de geolocalización
+    // Variables de sensores
     let currentLat = null;
     let currentLng = null;
+    let cameraReady = false;
+    let locationReady = false;
 
-    // Inicializar Cámara y Geolocalización
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-        .then(stream => { video.srcObject = stream; })
-        .catch(err => {
+    function checkSensors() {
+        if (cameraReady && locationReady) {
+            snapBtn.disabled = false;
+            snapBtn.innerText = 'Capturar y Marcar';
+            alertBox.classList.add('d-none');
+        } else {
+            snapBtn.disabled = true;
+            snapBtn.innerText = 'Permita Cámara y Ubicación...';
+            
+            alertBox.classList.remove('d-none');
             alertBox.className = 'alert alert-danger';
-            alertBox.innerText = 'Error al acceder a la cámara: ' + err;
+            
+            let msg = "Para marcar asistencia DEBE permitir los accesos:<br>";
+            if (!cameraReady) msg += "- Acceso a la cámara no detectado o denegado.<br>";
+            if (!locationReady) msg += "- Acceso a la ubicación (GPS) no detectado o denegado.";
+            alertBox.innerHTML = msg;
+        }
+    }
+
+    // Inicializar Cámara
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(stream => { 
+            video.srcObject = stream; 
+            cameraReady = true;
+            checkSensors();
+        })
+        .catch(err => {
+            console.error("Error cámara:", err);
+            cameraReady = false;
+            checkSensors();
         });
 
+    // Inicializar Geolocalización
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 currentLat = position.coords.latitude;
                 currentLng = position.coords.longitude;
+                locationReady = true;
+                checkSensors();
             },
             (err) => {
                 console.warn("No se pudo obtener la ubicación: ", err);
-                showAlert("Advertencia: No se pudo obtener la ubicación. Por favor, permita el acceso a su ubicación.", true);
+                locationReady = false;
+                checkSensors();
             },
-            { enableHighAccuracy: true }
+            { enableHighAccuracy: true, maximumAge: 0 }
         );
     } else {
         console.warn("Geolocalización no soportada por el navegador");
+        locationReady = false;
+        checkSensors();
     }
 
-    // Mostrar ocultar observaciones si es salida
-    Array.from(actionRadios).forEach(radio => {
+    function showAlert(msg, isError=false) {
+        alertBox.innerText = msg;
+        alertBox.className = 'alert ' + (isError ? 'alert-danger' : 'alert-success');
+        alertBox.classList.remove('d-none');
+    }
+
+    // Toggle campo observaciones
+    actionRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
-            if(e.target.value === 'salida') {
+            if (e.target.value === 'salida') {
                 obsContainer.style.display = 'block';
             } else {
                 obsContainer.style.display = 'none';
+                obsInput.value = '';
             }
         });
     });
 
-    function showAlert(msg, isError) {
-        alertBox.innerText = msg;
-        alertBox.className = isError ? 'alert alert-danger' : 'alert alert-success';
-        alertBox.classList.remove('d-none');
-    }
-
     // Capturar foto y enviar
     snapBtn.addEventListener('click', () => {
-        // Obligar ubicación
-        if (currentLat === null || currentLng === null) {
-            showAlert("Es obligatorio permitir el acceso a su ubicación para marcar asistencia. Por favor, recargue la página y conceda los permisos.", true);
+        // Doble verificación de seguridad
+        if (!cameraReady || !locationReady || currentLat === null || currentLng === null) {
+            showAlert("Es obligatorio permitir el acceso a su cámara y ubicación para marcar asistencia.", true);
             return;
         }
 

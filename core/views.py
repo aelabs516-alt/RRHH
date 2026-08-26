@@ -170,6 +170,7 @@ class PermissionListView(LoginRequiredMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx['title'], ctx['headers'] = 'Permisos y Vacaciones', ['Documento', 'Colaborador', 'Categoría', 'F. Inicio', 'F. Fin', 'Estado']
         ctx['create_url'] = 'permissions_create'
+        ctx['pdf_url_name'] = 'permission_pdf'
         
         if self.request.user.role in ['ADMIN', 'JEFE'] or self.request.user.is_superuser:
             ctx['update_url'] = 'permissions_update'

@@ -40,6 +40,7 @@ urlpatterns = [
     path('permissions/create/', core_views.PermissionCreateView.as_view(), name='permissions_create'),
     path('permissions/<int:pk>/update/', core_views.PermissionUpdateView.as_view(), name='permissions_update'),
     path('permissions/<int:pk>/delete/', core_views.PermissionDeleteView.as_view(), name='permissions_delete'),
+    path('permissions/<int:pk>/pdf/', certificates_views.download_permission_pdf, name='permission_pdf'),
 
     path('acts/', core_views.ActListView.as_view(), name='acts_list'),
     path('acts/create/', core_views.ActCreateView.as_view(), name='acts_create'),

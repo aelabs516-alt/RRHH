@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -91,19 +91,19 @@
         <div class="field-row"><span class="field-label">Colaborador:</span> {{ perm.user.get_full_name }}</div>
         <div class="field-row"><span class="field-label">Documento:</span> {{ perm.user.document_number }}</div>
         <div class="field-row"><span class="field-label">Cargo:</span> {{ perm.user.position.name|default:"N/A" }}</div>
-        <div class="field-row"><span class="field-label">�rea:</span> {{ perm.user.area.name|default:"N/A" }}</div>
+        <div class="field-row"><span class="field-label">Ãrea:</span> {{ perm.user.area.name|default:"N/A" }}</div>
         
         <div class="section-title">Detalles del Permiso</div>
-        <div class="field-row"><span class="field-label">Categor�a / Tipo:</span> {{ perm.get_category_display }}</div>
+        <div class="field-row"><span class="field-label">CategorÃ­a / Tipo:</span> {{ perm.get_category_display }}</div>
         <div class="field-row"><span class="field-label">Estado de la Solicitud:</span> {{ perm.get_status_display }}</div>
         
         <div class="field-row"><span class="field-label">Fecha y Hora de Inicio:</span> {{ perm.start_date|date:"Y-m-d H:i" }}</div>
         <div class="field-row"><span class="field-label">Fecha y Hora de Fin:</span> {{ perm.end_date|date:"Y-m-d H:i" }}</div>
         {% if perm.category == 'VACACIONES' %}
-        <div class="field-row"><span class="field-label">D�as H�biles Solicitados:</span> {{ perm.days_requested }} d�as</div>
+        <div class="field-row"><span class="field-label">DÃ­as HÃ¡biles Solicitados:</span> {{ perm.days_requested }} dÃ­as</div>
         {% endif %}
         
-        <div class="section-title">Motivo / Raz�n de la Solicitud</div>
+        <div class="section-title">Motivo / RazÃ³n de la Solicitud</div>
         <div class="box">
             {{ perm.reason|default:"No se ha especificado un motivo adicional."|linebreaksbr }}
         </div>
@@ -136,4 +136,4 @@
         </tr>
     </table>
 </body>
-</html>
+</html>

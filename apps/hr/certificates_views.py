@@ -206,28 +206,23 @@ from apps.attendance.models import Permission
 
 @login_required
 def download_permission_pdf(request, pk):
-    try:
-        perm = get_object_or_404(Permission, pk=pk)
-        
-        # Security: only admins/jefes or the owner can download
-        if request.user.role not in ['ADMIN', 'JEFE'] and not request.user.is_superuser:
-            if perm.user != request.user:
-                return HttpResponse("No tienes permiso para descargar este documento.", status=403)
-                
-        context = {'perm': perm}
-        
-        html = render_to_string('hr/pdf/permission_document.html', context, request=request)
-        
-        response = HttpResponse(content_type='application/pdf')
-        filename = f'Solicitud_{perm.category}_{perm.user.document_number}_{perm.start_date.strftime("%Y%m%d")}.pdf'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
-        pisa_status = pisa.CreatePDF(html, dest=response, link_callback=link_callback)
-        
-        if pisa_status.err:
-            return HttpResponse('Error generando PDF', status=500)
-        return response
-    except Exception as e:
-        import traceback
-        error_msg = f"Crash en PDF:\n{str(e)}\n\n{traceback.format_exc()}"
-        return HttpResponse(error_msg, content_type="text/plain", status=500)
+    perm = get_object_or_404(Permission, pk=pk)
+    
+    # Security: only admins/jefes or the owner can download
+    if request.user.role not in ['ADMIN', 'JEFE'] and not request.user.is_superuser:
+        if perm.user != request.user:
+            return HttpResponse("No tienes permiso para descargar este documento.", status=403)
+            
+    context = {'perm': perm}
+    
+    html = render_to_string('hr/pdf/permission_document.html', context, request=request)
+    
+    response = HttpResponse(content_type='application/pdf')
+    filename = f'Solicitud_{perm.category}_{perm.user.document_number}_{perm.start_date.strftime("%Y%m%d")}.pdf'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    pisa_status = pisa.CreatePDF(html, dest=response, link_callback=link_callback)
+    
+    if pisa_status.err:
+        return HttpResponse('Error generando PDF', status=500)
+    return response

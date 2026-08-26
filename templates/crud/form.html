@@ -106,17 +106,21 @@
 
             function updateVacationUI() {
                 if (categorySelect.value === 'VACACIONES') {
-                    // Cambiar a input type date (oculta horas)
-                    startInput.type = 'date';
-                    endInput.type = 'date';
-                    
-                    // Solo para recortar el string "T..." si ya tenía hora asignada al cargar
+                    // Primero formatear el valor para que el navegador no lo borre al cambiar de type
                     if (startInput.value.includes('T')) startInput.value = startInput.value.split('T')[0];
                     if (endInput.value.includes('T')) endInput.value = endInput.value.split('T')[0];
+                    
+                    // Luego cambiar el type
+                    startInput.type = 'date';
+                    endInput.type = 'date';
                     
                     if(daysContainer) daysContainer.style.display = 'block';
                     calculateWorkingDays();
                 } else {
+                    // Formatear añadiendo la hora por defecto si no la tiene
+                    if (startInput.value && !startInput.value.includes('T')) startInput.value = startInput.value + 'T08:00';
+                    if (endInput.value && !endInput.value.includes('T')) endInput.value = endInput.value + 'T17:00';
+                    
                     startInput.type = 'datetime-local';
                     endInput.type = 'datetime-local';
                     if(daysContainer) daysContainer.style.display = 'none';

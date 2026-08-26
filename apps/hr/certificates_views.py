@@ -218,7 +218,7 @@ def download_permission_pdf(request, pk):
     html = render_to_string('hr/pdf/permission_document.html', context, request=request)
     
     response = HttpResponse(content_type='application/pdf')
-    filename = f'Solicitud_{perm.get_category_display().replace(" ", "_")}_{perm.user.document_number}_{perm.start_date.strftime("%Y%m%d")}.pdf'
+    filename = f'Solicitud_{perm.category}_{perm.user.document_number}_{perm.start_date.strftime("%Y%m%d")}.pdf'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     pisa_status = pisa.CreatePDF(html, dest=response, link_callback=link_callback)

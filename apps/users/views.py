@@ -111,7 +111,7 @@ def dashboard(request):
     
     # Gráficos
     # 1. Horas extras acumuladas por colaborador
-    extras_por_colab = list(Attendance.objects.filter(extra_hours__gt=0).values('user__first_name', 'user__last_name').annotate(total=Sum('extra_hours')).order_by('-total')[:10])
+    extras_por_colab = list(att_qs.filter(extra_hours__gt=0).values('user__first_name', 'user__last_name').annotate(total=Sum('extra_hours')).order_by('-total')[:10])
     
     # 2. Vacaciones acumuladas por colaborador (Ley Colombiana: 15 días hábiles por cada año laborado - 360 días)
     from apps.users.models import User

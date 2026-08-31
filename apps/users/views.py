@@ -158,7 +158,10 @@ def dashboard(request):
         
         if latest_act:
             # Contar los retardos DESPUÉS de la fecha/hora exacta del último acta
-            tardies_count = tardies_qs.filter(entry_time__gt=latest_act.date_created).count()
+            tardies_count = tardies_qs.filter(
+                Q(entry_time__gt=latest_act.date_created) |
+                Q(entry_time__isnull=True, date__gt=latest_act.date_created.date())
+            ).count()
         else:
             # Si nunca ha tenido un acta, se cuentan todos
             tardies_count = tardies_qs.count()

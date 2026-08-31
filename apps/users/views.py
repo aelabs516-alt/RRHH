@@ -146,15 +146,33 @@ def dashboard(request):
     # Ordenar por balance
     vacaciones_por_colab = sorted(vacaciones_por_colab, key=lambda x: x['balance'], reverse=True)[:10]
 
-    # Panel de Auditoría: Retardos (esta semana)
-    start_of_week = now.date() - timedelta(days=now.date().weekday())
-    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # Panel de Auditoría: Retardos pendientes por generar acta
+    critical_tardies = []
+    # Obtener usuarios que tienen al menos un retardo
+    users_with_tardies = User.objects.filter(attendances__entry_status=AttendanceStatus.RETARDO).distinct()
     
-    users_with_acts = DisciplinaryAct.objects.filter(date_created__gte=start_of_month).values_list('user__id', flat=True)
-    
-    critical_tardies = Attendance.objects.filter(
-        date__gte=start_of_week, entry_status=AttendanceStatus.RETARDO
-    ).exclude(user__id__in=users_with_acts).values('user__first_name', 'user__last_name', 'user__document_number').annotate(count=Count('id')).order_by('-count')
+    for u in users_with_tardies:
+        # Buscar el acta más reciente de este usuario
+        latest_act = DisciplinaryAct.objects.filter(user=u).order_by('-date_created').first()
+        tardies_qs = Attendance.objects.filter(user=u, entry_status=AttendanceStatus.RETARDO)
+        
+        if latest_act:
+            # Contar los retardos DESPUÉS de la fecha del último acta
+            tardies_count = tardies_qs.filter(date__gt=latest_act.date_created.date()).count()
+        else:
+            # Si nunca ha tenido un acta, se cuentan todos
+            tardies_count = tardies_qs.count()
+            
+        if tardies_count > 0:
+            critical_tardies.append({
+                'user__first_name': u.first_name,
+                'user__last_name': u.last_name,
+                'user__document_number': u.document_number,
+                'count': tardies_count
+            })
+            
+    # Ordenar de mayor a menor cantidad de retardos pendientes
+    critical_tardies.sort(key=lambda x: x['count'], reverse=True)
     
     # Alerta de Geolocalización: Marcaciones fuera de la empresa (Hoy)
     out_of_bounds_alerts = Attendance.objects.filter(

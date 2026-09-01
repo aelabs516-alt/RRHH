@@ -34,7 +34,7 @@
     </table>
     
     <div class="content">
-        <div class="field-row"><span class="field-label">Fecha de Solicitud:</span> {{ perm.start_date|date:"d" }} de {{ perm.start_date|date:"F" }} de {{ perm.start_date|date:"Y" }}</div>
+        <div class="field-row"><span class="field-label">Fecha de Solicitud:</span> {{ perm.created_at|date:"d" }} de {{ perm.created_at|date:"F" }} de {{ perm.created_at|date:"Y" }}</div>
         <div class="field-row"><span class="field-label">Colaborador:</span> {{ perm.user.get_full_name }}</div>
         <div class="field-row"><span class="field-label">Documento:</span> {{ perm.user.document_number }}</div>
         <div class="field-row"><span class="field-label">Cargo:</span> {{ perm.user.position.name|default:"N/A" }}</div>

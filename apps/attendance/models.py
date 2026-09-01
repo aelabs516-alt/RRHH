@@ -79,6 +79,7 @@ class Permission(models.Model):
     days_requested = models.IntegerField('Días a disfrutar', null=True, blank=True)
     reason = models.TextField('Motivo')
     status = models.CharField('Estado', max_length=20, choices=STATUS_CHOICES, default='PENDIENTE')
+    created_at = models.DateTimeField('Fecha de Solicitud', auto_now_add=True)
     
     # Aprobación
     approved_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_permissions')

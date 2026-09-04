@@ -75,8 +75,19 @@ def console_individual(request):
                     
                 time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                 
+                deficit_entry = 0
+                if entry_dt > turn_start_datetime:
+                    if entry_justification not in REMUNERADOS:
+                        deficit_entry = (entry_dt - turn_start_datetime).total_seconds()
+                        
+                deficit_exit = 0
+                if exit_dt < turn_end_datetime:
+                    deficit_exit = (turn_end_datetime - exit_dt).total_seconds()
+
                 if time_balance < 0:
-                    permission_hours = round(abs(time_balance) / 3600.0, 2)
+                    deficit_total = abs(time_balance)
+                    deuda_real = max(0.0, deficit_total - deficit_entry)
+                    permission_hours = round(deuda_real / 3600.0, 2)
                     extra_hours = 0.0
                 else:
                     permission_hours = 0.0
@@ -238,8 +249,19 @@ def console_massive(request):
                             
                         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                         
+                        deficit_entry = 0
+                        if entry_dt > turn_start_datetime:
+                            if entry_just not in REMUNERADOS:
+                                deficit_entry = (entry_dt - turn_start_datetime).total_seconds()
+                                
+                        deficit_exit = 0
+                        if exit_dt < turn_end_datetime:
+                            deficit_exit = (turn_end_datetime - exit_dt).total_seconds()
+
                         if time_balance < 0:
-                            permission_hours = round(abs(time_balance) / 3600.0, 2)
+                            deficit_total = abs(time_balance)
+                            deuda_real = max(0.0, deficit_total - deficit_entry)
+                            permission_hours = round(deuda_real / 3600.0, 2)
                             extra_hours = 0.0
                         else:
                             permission_hours = 0.0

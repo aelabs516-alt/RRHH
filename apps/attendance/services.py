@@ -132,9 +132,15 @@ def process_entry(user, entry_datetime, entry_justification='NORMAL', entry_obse
     grace_period = turn_start_datetime + timedelta(minutes=5)
     
     status = AttendanceStatus.A_TIEMPO
+    
+    needs_entry_just = False
     if entry_datetime > grace_period:
-        if entry_justification == 'NORMAL':
-            raise ValueError("require_entry_justification")
+        needs_entry_just = True
+    if entry_datetime <= turn_start_datetime - timedelta(minutes=30):
+        needs_entry_just = True
+        
+    if needs_entry_just and entry_justification == 'NORMAL':
+        raise ValueError("require_entry_justification")
             
         REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
         if entry_justification in REMUNERADOS:
@@ -226,9 +232,22 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
             
         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
         
+        # Calcular los déficits físicos
+        deficit_entry = 0
+        if attendance.entry_time > turn_start_datetime:
+            if getattr(attendance, 'entry_justification', 'NORMAL') not in REMUNERADOS:
+                deficit_entry = (attendance.entry_time - turn_start_datetime).total_seconds()
+                
+        deficit_exit = 0
+        if exit_datetime < turn_end_datetime:
+            deficit_exit = (turn_end_datetime - exit_datetime).total_seconds()
+
         if time_balance < 0:
-            # Si el tiempo neto físico es menor al turno, hay deuda
-            permission_hours = abs(time_balance) / 3600.0
+            # Regla: Si llegó tarde pero no compensó, no tomar el tiempo de llegada tarde como permiso.
+            # Por lo tanto, la deuda neta (permission_hours) no debe incluir el deficit_entry.
+            deficit_total = abs(time_balance)
+            deuda_real = max(0.0, deficit_total - deficit_entry)
+            permission_hours = deuda_real / 3600.0
             extra_hours = 0.0
         else:
             # Si el tiempo neto físico superó el turno, no debe tiempo
@@ -278,7 +297,16 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
             permission_hours = early_time.total_seconds() / 3600.0
 
     # Condicional de Observaciones Obligatorias
-    if (extra_hours > 0 or permission_hours > 0) and exit_justification == 'NORMAL':
+    needs_exit_just = False
+    if turn and turn.end_time:
+        if exit_datetime < turn_end_datetime:
+            needs_exit_just = True
+        if exit_datetime >= turn_end_datetime + timedelta(minutes=20):
+            needs_exit_just = True
+    if not turn and attendance.hours_worked > 0:
+        needs_exit_just = True
+        
+    if needs_exit_just and exit_justification == 'NORMAL':
         raise ValueError("require_exit_justification")
         
     REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']

@@ -1,65 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Dashboard - RRHH
-{% for row in net_table %}
-<!-- Modal Detalle Colaborador -->
-<div class="modal fade" id="detailModal{{ forloop.counter }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title">Detalle de Marcaciones: {{ row.name }}</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>A continuación se detallan los días en el periodo consultado donde el colaborador generó <strong>Horas Extras</strong>, <strong>Horas de Permiso (Deuda)</strong> o llegó <strong>Tarde</strong>.</p>
-        
-        {% if row.details %}
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Entrada</th>
-                        <th>Salida</th>
-                        <th>Estado Ingreso</th>
-                        <th>Horas Extras</th>
-                        <th>Horas Permiso</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in row.details %}
-                    <tr>
-                        <td>{{ d.date }}</td>
-                        <td>{{ d.entry }}</td>
-                        <td>{{ d.exit }}</td>
-                        <td>
-                            {% if d.status == 'Retardo' %}
-                            <span class="text-danger fw-bold"><i class="fas fa-exclamation-triangle"></i> Retardo</span>
-                            {% else %}
-                            {{ d.status }}
-                            {% endif %}
-                        </td>
-                        <td class="text-success fw-bold">{% if d.extra > 0 %}+{{ d.extra }}h{% else %}-{% endif %}</td>
-                        <td class="text-danger fw-bold">{% if d.permission > 0 %}-{{ d.permission }}h{% else %}-{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="alert alert-info">No hay registros de horas extras, permisos, o retardos para este colaborador en el periodo seleccionado.</div>
-        {% endif %}
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-      </div>
-    </div>
-  </div>
-</div>
-{% endfor %}
-
-{% endblock %}
+{% block title %}Dashboard - RRHH{% endblock %}
 
 {% block content %}
 <!-- Filtros -->

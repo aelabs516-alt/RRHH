@@ -202,6 +202,18 @@ def dashboard(request):
         matrix = c.turns.last()
         turn_str = "Matriz Asignada" if matrix else "Sin Turno"
         
+        from django.db.models import Q
+        details = []
+        for att in c_att.filter(Q(extra_hours__gt=0) | Q(permission_hours__gt=0) | Q(entry_status='RETARDO')).order_by('-date'):
+            details.append({
+                'date': att.date.strftime('%Y-%m-%d'),
+                'status': att.get_entry_status_display() if att.entry_status else 'A Tiempo',
+                'extra': att.extra_hours,
+                'permission': att.permission_hours,
+                'entry': timezone.localtime(att.entry_time).strftime('%H:%M') if att.entry_time else '-',
+                'exit': timezone.localtime(att.exit_time).strftime('%H:%M') if att.exit_time else '-'
+            })
+            
         net_table.append({
             'doc': c.document_number,
             'name': c.get_full_name(),
@@ -209,7 +221,8 @@ def dashboard(request):
             'extras': round(c_extras, 1),
             'permisos': round(c_perms, 1),
             'balance': round(balance, 1),
-            'state': state
+            'state': state,
+            'details': details
         })
 
     # Cacular ausencias (Faltas o no llegadas) para la fecha seleccionada o hoy

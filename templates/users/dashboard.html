@@ -334,7 +334,11 @@
                     {% for row in net_table %}
                     <tr>
                         <td>{{ row.doc }}</td>
-                        <td class="fw-bold">{{ row.name }}</td>
+                        <td class="fw-bold">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#detailModal{{ forloop.counter }}" class="text-decoration-none text-primary">
+                                {{ row.name }} <i class="fas fa-search-plus ms-1"></i>
+                            </a>
+                        </td>
                         <td>{{ row.turn }}</td>
                         <td class="text-success">+{{ row.extras }}h</td>
                         <td class="text-danger">-{{ row.permisos }}h</td>

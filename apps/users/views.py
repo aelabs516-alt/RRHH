@@ -95,8 +95,8 @@ def dashboard(request):
     if month: perm_qs = perm_qs.filter(start_date__month=month)
     if collab_id: perm_qs = perm_qs.filter(user_id=collab_id)
     
-    # Calculo simple de horas por permisos aprobados (excluye vacaciones)
-    for p in perm_qs.exclude(category='VACACIONES'):
+    # Calculo simple de horas por permisos aprobados (SOLO NO Remunerados)
+    for p in perm_qs.filter(category__in=['PERSONALES', 'OTROS']):
         diff = p.end_date - p.start_date
         total_permisos += diff.total_seconds() / 3600.0
         
@@ -189,7 +189,7 @@ def dashboard(request):
         c_extras = c_att.aggregate(Sum('extra_hours'))['extra_hours__sum'] or 0
         
         c_perms = 0
-        c_pqs = perm_qs.filter(user=c).exclude(category='VACACIONES')
+        c_pqs = perm_qs.filter(user=c, category__in=['PERSONALES', 'OTROS'])
         for p in c_pqs:
             c_perms += (p.end_date - p.start_date).total_seconds() / 3600.0
             

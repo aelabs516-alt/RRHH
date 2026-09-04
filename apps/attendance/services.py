@@ -214,7 +214,18 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
             turn_end_datetime += timedelta(days=1)
             
         turn_duration = turn_end_datetime - turn_start_datetime
-        worked_duration = exit_datetime - attendance.entry_time
+        
+        effective_entry = attendance.entry_time
+        if effective_entry < turn_start_datetime:
+            if (turn_start_datetime - effective_entry).total_seconds() < 30 * 60:
+                effective_entry = turn_start_datetime
+                
+        effective_exit = exit_datetime
+        if effective_exit > turn_end_datetime:
+            if (effective_exit - turn_end_datetime).total_seconds() < 30 * 60:
+                effective_exit = turn_end_datetime
+                
+        worked_duration = effective_exit - effective_entry
         
         # Reconocer el tiempo del ingreso tarde como tiempo trabajado si fue un permiso remunerado
         REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']

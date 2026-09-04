@@ -41,8 +41,14 @@ class Attendance(models.Model):
         ('PERSONAL', 'Permiso NO Remunerado: Asuntos personales'),
         ('OTROS', 'Permiso NO Remunerado: Otros'),
     ]
-    justification_type = models.CharField('Tipo de Justificación', max_length=20, choices=JUSTIFICATION_CHOICES, default='NORMAL')
-    observations = models.TextField('Observaciones', blank=True)
+    entry_justification = models.CharField('Justificación Ingreso', max_length=20, choices=JUSTIFICATION_CHOICES, default='NORMAL')
+    entry_observations = models.TextField('Observaciones Ingreso', blank=True)
+    
+    exit_justification = models.CharField('Justificación Salida', max_length=20, choices=JUSTIFICATION_CHOICES, default='NORMAL')
+    exit_observations = models.TextField('Observaciones Salida', blank=True)
+    
+    # Mantenemos este para compatibilidad o notas generales si es necesario, pero usaremos los nuevos
+    observations = models.TextField('Observaciones Generales', blank=True)
     
     class Meta:
         verbose_name = 'Registro de Asistencia'

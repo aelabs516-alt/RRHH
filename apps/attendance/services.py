@@ -110,7 +110,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def process_entry(user, entry_datetime, photo=None, lat=None, lng=None):
+def process_entry(user, entry_datetime, entry_justification='NORMAL', entry_observations='', photo=None, lat=None, lng=None):
     """
     Procesa el ingreso, aplica la regla de 5 minutos, evalúa actas disciplinarias y geolocalización.
     """
@@ -133,8 +133,15 @@ def process_entry(user, entry_datetime, photo=None, lat=None, lng=None):
     
     status = AttendanceStatus.A_TIEMPO
     if entry_datetime > grace_period:
-        status = AttendanceStatus.RETARDO
-        
+        if entry_justification == 'NORMAL':
+            raise ValueError("require_entry_justification")
+            
+        REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+        if entry_justification in REMUNERADOS:
+            status = AttendanceStatus.A_TIEMPO
+        else:
+            status = AttendanceStatus.RETARDO
+            
     is_out_of_bounds = False
     if lat is not None and lng is not None:
         distance = calculate_distance(float(lat), float(lng), COMPANY_LAT, COMPANY_LNG)
@@ -146,6 +153,8 @@ def process_entry(user, entry_datetime, photo=None, lat=None, lng=None):
         defaults={
             'entry_time': entry_datetime, 
             'entry_status': status, 
+            'entry_justification': entry_justification,
+            'entry_observations': entry_observations,
             'entry_photo': photo,
             'latitude': lat,
             'longitude': lng,
@@ -160,6 +169,8 @@ def process_entry(user, entry_datetime, photo=None, lat=None, lng=None):
         # Actualiza si el registro existía pero sin hora de ingreso (ej. salida anticipada sin marcación de entrada)
         attendance.entry_time = entry_datetime
         attendance.entry_status = status
+        attendance.entry_justification = entry_justification
+        attendance.entry_observations = entry_observations
         if photo: attendance.entry_photo = photo
         attendance.latitude = lat
         attendance.longitude = lng
@@ -172,7 +183,7 @@ def process_entry(user, entry_datetime, photo=None, lat=None, lng=None):
         
     return attendance, status, act_generated
 
-def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng=None):
+def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observations='', photo=None, lat=None, lng=None):
     """
     Procesa la salida, aplica la regla de 30 minutos de horas extras y validación de observaciones.
     """
@@ -205,6 +216,12 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
         turn_duration = turn_end_datetime - turn_start_datetime
         worked_duration = exit_datetime - attendance.entry_time
         
+        # Reconocer el tiempo del ingreso tarde como tiempo trabajado si fue un permiso remunerado
+        REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+        if getattr(attendance, 'entry_justification', 'NORMAL') in REMUNERADOS and attendance.entry_time > turn_start_datetime:
+            paid_morning_delay = attendance.entry_time - turn_start_datetime
+            worked_duration += paid_morning_delay
+            
         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
         
         if time_balance >= 30 * 60:
@@ -226,14 +243,22 @@ def process_exit(user, exit_datetime, observations="", photo=None, lat=None, lng
             permission_hours = early_time.total_seconds() / 3600.0
 
     # Condicional de Observaciones Obligatorias
-    if (extra_hours > 0 or permission_hours > 0) and not observations.strip():
-        raise ValueError("Es obligatorio ingresar el Motivo (observaciones) por generar horas extras o salida anticipada.")
+    if (extra_hours > 0 or permission_hours > 0) and exit_justification == 'NORMAL':
+        raise ValueError("require_exit_justification")
         
+    REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+    if exit_justification in REMUNERADOS:
+        # Si es remunerado, el tiempo faltante se considera trabajado, no se descuenta
+        if permission_hours > 0:
+            permission_hours = 0.0
+        # Las horas extras se mantienen si las generó después de su permiso (el permiso cuenta como trabajado)
+
     attendance.exit_time = exit_datetime
     if photo: attendance.exit_photo = photo
     attendance.extra_hours = round(extra_hours, 2)
     attendance.permission_hours = round(permission_hours, 2)
-    attendance.observations = observations
+    attendance.exit_justification = exit_justification
+    attendance.exit_observations = exit_observations
     
     if lat is not None and lng is not None:
         distance = calculate_distance(float(lat), float(lng), COMPANY_LAT, COMPANY_LNG)

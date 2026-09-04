@@ -43,29 +43,56 @@
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label fw-bold">Tipo de Justificación</label>
-                <select name="justification_type" class="form-select">
-                    <option value="NORMAL">Ninguna / Normal</option>
-                    <optgroup label="Permisos Remunerados">
-                        <option value="CITA_MEDICA">Cita médica</option>
-                        <option value="ELECCIONES">Elecciones / Jurado</option>
-                        <option value="CALAMIDAD">Calamidad</option>
-                        <option value="ESCOLAR">Obligaciones escolares</option>
-                        <option value="JUDICIAL">Citas Judiciales</option>
-                        <option value="LUTO">Luto</option>
-                        <option value="ENFERMEDAD">Enfermedad General</option>
-                    </optgroup>
-                    <optgroup label="Permisos NO Remunerados">
-                        <option value="PERSONAL">Asuntos personales</option>
-                        <option value="OTROS">Otros</option>
-                    </optgroup>
-                </select>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Justificación Ingreso (Llegada tarde)</label>
+                    <select name="entry_justification" class="form-select">
+                        <option value="NORMAL">Ninguna / Normal</option>
+                        <optgroup label="Permisos Remunerados">
+                            <option value="CITA_MEDICA">Cita médica</option>
+                            <option value="ELECCIONES">Elecciones / Jurado</option>
+                            <option value="CALAMIDAD">Calamidad</option>
+                            <option value="ESCOLAR">Obligaciones escolares</option>
+                            <option value="JUDICIAL">Citas Judiciales</option>
+                            <option value="LUTO">Luto</option>
+                            <option value="ENFERMEDAD">Enfermedad General</option>
+                        </optgroup>
+                        <optgroup label="Permisos NO Remunerados">
+                            <option value="PERSONAL">Asuntos personales</option>
+                            <option value="OTROS">Otros</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Observaciones Ingreso</label>
+                    <textarea name="entry_observations" class="form-control" rows="2"></textarea>
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label fw-bold">Observaciones / Justificación</label>
-                <textarea name="observations" class="form-control" rows="2"></textarea>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Justificación Salida (Anticipada/Extra)</label>
+                    <select name="exit_justification" class="form-select">
+                        <option value="NORMAL">Ninguna / Normal</option>
+                        <optgroup label="Permisos Remunerados">
+                            <option value="CITA_MEDICA">Cita médica</option>
+                            <option value="ELECCIONES">Elecciones / Jurado</option>
+                            <option value="CALAMIDAD">Calamidad</option>
+                            <option value="ESCOLAR">Obligaciones escolares</option>
+                            <option value="JUDICIAL">Citas Judiciales</option>
+                            <option value="LUTO">Luto</option>
+                            <option value="ENFERMEDAD">Enfermedad General</option>
+                        </optgroup>
+                        <optgroup label="Permisos NO Remunerados">
+                            <option value="PERSONAL">Asuntos personales</option>
+                            <option value="OTROS">Otros</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Observaciones Salida</label>
+                    <textarea name="exit_observations" class="form-control" rows="2"></textarea>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary">Guardar Registro</button>

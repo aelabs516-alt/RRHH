@@ -60,9 +60,30 @@
             </div>
         </div>
 
-        <div class="mb-3 w-50 mx-auto" id="obsContainer" style="display: none;">
-            <label>Observaciones (Obligatorias para salida con horas extras / permisos)</label>
-            <textarea id="observations" class="form-control" rows="2"></textarea>
+        <div class="mb-3 w-50 mx-auto text-start" id="obsContainer" style="display: none;">
+            <div class="alert alert-warning mb-2" id="obsMessage">Justificación requerida</div>
+            <label class="form-label fw-bold">Motivo</label>
+            <select id="justification" class="form-select mb-2">
+                <option value="NORMAL" selected disabled>Seleccione un motivo...</option>
+                <optgroup label="Permisos Remunerados (No descuentan tiempo)">
+                    <option value="CITA_MEDICA">Cita médica</option>
+                    <option value="ELECCIONES">Elecciones / Jurado</option>
+                    <option value="CALAMIDAD">Calamidad</option>
+                    <option value="ESCOLAR">Obligaciones escolares</option>
+                    <option value="JUDICIAL">Citas Judiciales</option>
+                    <option value="LUTO">Luto</option>
+                    <option value="ENFERMEDAD">Enfermedad General</option>
+                </optgroup>
+                <optgroup label="Permisos NO Remunerados (Descuentan tiempo)">
+                    <option value="PERSONAL">Asuntos personales</option>
+                    <option value="OTROS">Otros / Ingresar texto</option>
+                </optgroup>
+            </select>
+            
+            <div id="textObsContainer" style="display:none;">
+                <label class="form-label fw-bold">Describa el motivo</label>
+                <textarea id="observations" class="form-control" rows="2" placeholder="Escriba aquí..."></textarea>
+            </div>
         </div>
 
         <button id="snapBtn" class="btn btn-success btn-lg" disabled>Iniciando sensores...</button>
@@ -79,6 +100,17 @@
     const actionRadios = document.getElementsByName('actionType');
     const obsContainer = document.getElementById('obsContainer');
     const obsInput = document.getElementById('observations');
+    const justInput = document.getElementById('justification');
+    const textObsContainer = document.getElementById('textObsContainer');
+    const obsMessage = document.getElementById('obsMessage');
+
+    justInput.addEventListener('change', function() {
+        if(this.value === 'OTROS' || this.value === 'PERSONAL') {
+            textObsContainer.style.display = 'block';
+        } else {
+            textObsContainer.style.display = 'none';
+        }
+    });
 
     // Variables de sensores
     let currentLat = null;
@@ -154,6 +186,9 @@
             } else {
                 obsContainer.style.display = 'none';
                 obsInput.value = '';
+                justInput.value = 'NORMAL';
+                obsContainer.style.display = 'none';
+                textObsContainer.style.display = 'none';
             }
         });
     });
@@ -168,6 +203,7 @@
 
         const action = document.querySelector('input[name="actionType"]:checked').value;
         const observations = obsInput.value;
+        const justification = justInput.value;
 
         // Configurar canvas a una proporción 5:4 exacta
         const targetRatio = 5 / 4;
@@ -228,6 +264,7 @@
                 action: action,
                 photo: photoData,
                 observations: observations,
+                justification: justification,
                 lat: currentLat,
                 lng: currentLng
             })
@@ -237,11 +274,15 @@
             if(data.status === 'success') {
                 showAlert(data.message, false);
                 obsInput.value = '';
+                justInput.value = 'NORMAL';
+                obsContainer.style.display = 'none';
+                textObsContainer.style.display = 'none';
             } else {
                 showAlert(data.message, true);
-                if(data.require_observations) {
+                if(data.require_justification) {
+                    obsMessage.innerText = data.message;
                     obsContainer.style.display = 'block';
-                    obsInput.focus();
+                    justInput.focus();
                 }
             }
         })

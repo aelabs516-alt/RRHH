@@ -18,8 +18,10 @@ def console_individual(request):
         reg_date = request.POST.get('date')
         entry_time = request.POST.get('entry_time')
         exit_time = request.POST.get('exit_time')
-        justification_type = request.POST.get('justification_type', 'NORMAL')
-        observations = request.POST.get('observations', '')
+        entry_justification = request.POST.get('entry_justification', 'NORMAL')
+        exit_justification = request.POST.get('exit_justification', 'NORMAL')
+        entry_observations = request.POST.get('entry_observations', '')
+        exit_observations = request.POST.get('exit_observations', '')
 
         try:
             colaborador = User.objects.get(id=user_id)
@@ -89,11 +91,11 @@ def console_individual(request):
                 # Si trabajó en un día de descanso (sin turno asignado), todas las horas son extras
                 extra_hours = hours_worked
 
-            if justification_type and justification_type != 'NORMAL':
+            if entry_justification and entry_justification != 'NORMAL':
                 status = AttendanceStatus.A_TIEMPO.value
                 
             REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
-            if justification_type in REMUNERADOS:
+            if entry_justification in REMUNERADOS or exit_justification in REMUNERADOS:
                 permission_hours = 0.0
                 if turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
                     # Calcular horas esperadas del turno
@@ -113,8 +115,10 @@ def console_individual(request):
                     'hours_worked': hours_worked,
                     'extra_hours': extra_hours,
                     'permission_hours': permission_hours,
-                    'justification_type': justification_type,
-                    'observations': observations,
+                    'entry_justification': entry_justification,
+                    'exit_justification': exit_justification,
+                    'entry_observations': entry_observations,
+                    'exit_observations': exit_observations,
                     'entry_status': status
                 }
             )
@@ -152,8 +156,10 @@ def console_massive(request):
             for uid in user_ids:
                 entry_time = request.POST.get(f'entry_{uid}')
                 exit_time = request.POST.get(f'exit_{uid}')
-                just_type = request.POST.get(f'just_{uid}', 'NORMAL')
-                obs = request.POST.get(f'obs_{uid}', '')
+                entry_just = request.POST.get(f'entry_just_{uid}', 'NORMAL')
+                exit_just = request.POST.get(f'exit_just_{uid}', 'NORMAL')
+                entry_obs = request.POST.get(f'entry_obs_{uid}', '')
+                exit_obs = request.POST.get(f'exit_obs_{uid}', '')
 
                 if entry_time or exit_time:
                     colaborador = User.objects.get(id=uid)
@@ -214,11 +220,11 @@ def console_massive(request):
                         # Si trabajó en un día de descanso (sin turno asignado), todas las horas son extras
                         extra_hours = hours_worked
 
-                    if just_type and just_type != 'NORMAL':
+                    if entry_just and entry_just != 'NORMAL':
                         status = AttendanceStatus.A_TIEMPO.value
                         
                     REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
-                    if just_type in REMUNERADOS:
+                    if entry_just in REMUNERADOS or exit_just in REMUNERADOS:
                         permission_hours = 0.0
                         if turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
                             t_start = datetime.combine(selected_date, turn_of_day.start_time)
@@ -237,8 +243,10 @@ def console_massive(request):
                             'hours_worked': hours_worked,
                             'extra_hours': extra_hours,
                             'permission_hours': permission_hours,
-                            'justification_type': just_type,
-                            'observations': obs,
+                            'entry_justification': entry_just,
+                            'exit_justification': exit_just,
+                            'entry_observations': entry_obs,
+                            'exit_observations': exit_obs,
                             'entry_status': status
                         }
                     )

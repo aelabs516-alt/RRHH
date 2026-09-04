@@ -34,6 +34,7 @@ def process_attendance_api(request):
             data = json.loads(request.body)
             action = data.get('action') # 'ingreso' o 'salida'
             photo_data = data.get('photo')
+            justification = data.get('justification', 'NORMAL')
             observations = data.get('observations', '')
             
             photo_file = None
@@ -48,7 +49,12 @@ def process_attendance_api(request):
             current_time = timezone.now()
             
             if action == 'ingreso':
-                att, status, act = process_entry(request.user, current_time, photo=photo_file, lat=lat, lng=lng)
+                try:
+                    att, status, act = process_entry(request.user, current_time, entry_justification=justification, entry_observations=observations, photo=photo_file, lat=lat, lng=lng)
+                except ValueError as e:
+                    if str(e) == 'require_entry_justification':
+                        return JsonResponse({'status': 'error', 'message': 'Justificación requerida por llegada tarde.', 'require_justification': True})
+                    return JsonResponse({'status': 'error', 'message': str(e)})
                 msg = f"Ingreso registrado: {status}"
                 if act:
                     if act == "ALERTA_CRITICA":
@@ -60,14 +66,15 @@ def process_attendance_api(request):
                 
             elif action == 'salida':
                 try:
-                    att = process_exit(request.user, current_time, observations=observations, photo=photo_file, lat=lat, lng=lng)
+                    att = process_exit(request.user, current_time, exit_justification=justification, exit_observations=observations, photo=photo_file, lat=lat, lng=lng)
                     msg = f"Salida registrada. Horas trabajadas: {att.hours_worked}."
                     if att.extra_hours > 0:
                         msg += f" Horas extras: {att.extra_hours}."
                     return JsonResponse({'status': 'success', 'message': msg})
                 except ValueError as e:
-                    # Este catch maneja las observaciones obligatorias si hay horas extras
-                    return JsonResponse({'status': 'error', 'message': str(e), 'require_observations': True})
+                    if str(e) == 'require_exit_justification':
+                        return JsonResponse({'status': 'error', 'message': 'Justificación requerida.', 'require_justification': True})
+                    return JsonResponse({'status': 'error', 'message': str(e)})
             else:
                 return JsonResponse({'status': 'error', 'message': 'Acción inválida.'})
                 

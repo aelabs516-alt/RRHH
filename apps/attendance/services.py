@@ -215,19 +215,10 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
             
         turn_duration = turn_end_datetime - turn_start_datetime
         
-        effective_entry = attendance.entry_time
-        if effective_entry < turn_start_datetime:
-            if (turn_start_datetime - effective_entry).total_seconds() < 30 * 60:
-                effective_entry = turn_start_datetime
-                
-        effective_exit = exit_datetime
-        if effective_exit > turn_end_datetime:
-            if (effective_exit - turn_end_datetime).total_seconds() < 20 * 60:
-                effective_exit = turn_end_datetime
-                
-        worked_duration = effective_exit - effective_entry
+        # 1. Calcular tiempo físico real
+        worked_duration = exit_datetime - attendance.entry_time
         
-        # Reconocer el tiempo del ingreso tarde como tiempo trabajado si fue un permiso remunerado
+        # 2. Agregar tiempo si llegó tarde con justa causa remunerada
         REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
         if getattr(attendance, 'entry_justification', 'NORMAL') in REMUNERADOS and attendance.entry_time > turn_start_datetime:
             paid_morning_delay = attendance.entry_time - turn_start_datetime
@@ -235,10 +226,43 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
             
         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
         
-        if time_balance > 0:
-            extra_hours = time_balance / 3600.0
-        elif time_balance < 0:
+        if time_balance < 0:
+            # Si el tiempo neto físico es menor al turno, hay deuda
             permission_hours = abs(time_balance) / 3600.0
+            extra_hours = 0.0
+        else:
+            # Si el tiempo neto físico superó el turno, no debe tiempo
+            permission_hours = 0.0
+            
+            # Ahora, ¿cuánto de este balance positivo califica como hora extra válida?
+            early_secs = 0
+            if attendance.entry_time < turn_start_datetime:
+                early_secs = (turn_start_datetime - attendance.entry_time).total_seconds()
+                if early_secs < 30 * 60:
+                    early_secs = 0
+                    
+            late_secs = 0
+            if exit_datetime > turn_end_datetime:
+                late_secs = (exit_datetime - turn_end_datetime).total_seconds()
+                if late_secs < 20 * 60:
+                    late_secs = 0
+                    
+            # Si compensó llegando tarde o saliendo temprano (ya lo cubrimos en worked_duration, pero 
+            # para hallar el extra exacto lo restamos del 'early' y 'late')
+            deficit_entry = 0
+            if attendance.entry_time > turn_start_datetime:
+                if getattr(attendance, 'entry_justification', 'NORMAL') not in REMUNERADOS:
+                    deficit_entry = (attendance.entry_time - turn_start_datetime).total_seconds()
+                    
+            deficit_exit = 0
+            if exit_datetime < turn_end_datetime:
+                deficit_exit = (turn_end_datetime - exit_datetime).total_seconds()
+                
+            valid_extra = early_secs + late_secs - (deficit_entry + deficit_exit)
+            if valid_extra > 0:
+                extra_hours = valid_extra / 3600.0
+            else:
+                extra_hours = 0.0
             
     elif turn and turn.end_time and not attendance.entry_time:
         turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))

@@ -67,18 +67,7 @@ def console_individual(request):
                     turn_end_datetime += timedelta(days=1)
                 
                 turn_duration = turn_end_datetime - turn_start_datetime
-                
-                effective_entry = entry_dt
-                if effective_entry < turn_start_datetime:
-                    if (turn_start_datetime - effective_entry).total_seconds() < 30 * 60:
-                        effective_entry = turn_start_datetime
-                        
-                effective_exit = exit_dt
-                if effective_exit > turn_end_datetime:
-                    if (effective_exit - turn_end_datetime).total_seconds() < 20 * 60:
-                        effective_exit = turn_end_datetime
-                        
-                worked_duration = effective_exit - effective_entry
+                worked_duration = exit_dt - entry_dt
                 
                 REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
                 if entry_justification in REMUNERADOS and entry_dt > turn_start_datetime:
@@ -86,10 +75,34 @@ def console_individual(request):
                     
                 time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                 
-                if time_balance > 0:
-                    extra_hours = round(time_balance / 3600.0, 2)
-                elif time_balance < 0:
+                if time_balance < 0:
                     permission_hours = round(abs(time_balance) / 3600.0, 2)
+                    extra_hours = 0.0
+                else:
+                    permission_hours = 0.0
+                    early_secs = 0
+                    if entry_dt < turn_start_datetime:
+                        early_secs = (turn_start_datetime - entry_dt).total_seconds()
+                        if early_secs < 30 * 60:
+                            early_secs = 0
+                    late_secs = 0
+                    if exit_dt > turn_end_datetime:
+                        late_secs = (exit_dt - turn_end_datetime).total_seconds()
+                        if late_secs < 20 * 60:
+                            late_secs = 0
+                    deficit_entry = 0
+                    if entry_dt > turn_start_datetime:
+                        if entry_justification not in REMUNERADOS:
+                            deficit_entry = (entry_dt - turn_start_datetime).total_seconds()
+                    deficit_exit = 0
+                    if exit_dt < turn_end_datetime:
+                        deficit_exit = (turn_end_datetime - exit_dt).total_seconds()
+                        
+                    valid_extra = early_secs + late_secs - (deficit_entry + deficit_exit)
+                    if valid_extra > 0:
+                        extra_hours = round(valid_extra / 3600.0, 2)
+                    else:
+                        extra_hours = 0.0
             elif exit_dt and turn_of_day and turn_of_day.end_time and not entry_dt:
                 # Fallback in case entry_dt is missing somehow
                 turn_end_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.end_time))
@@ -217,18 +230,7 @@ def console_massive(request):
                             turn_end_datetime += timedelta(days=1)
                         
                         turn_duration = turn_end_datetime - turn_start_datetime
-                        
-                        effective_entry = entry_dt
-                        if effective_entry < turn_start_datetime:
-                            if (turn_start_datetime - effective_entry).total_seconds() < 30 * 60:
-                                effective_entry = turn_start_datetime
-                                
-                        effective_exit = exit_dt
-                        if effective_exit > turn_end_datetime:
-                            if (effective_exit - turn_end_datetime).total_seconds() < 20 * 60:
-                                effective_exit = turn_end_datetime
-                                
-                        worked_duration = effective_exit - effective_entry
+                        worked_duration = exit_dt - entry_dt
                         
                         REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
                         if entry_just in REMUNERADOS and entry_dt > turn_start_datetime:
@@ -236,10 +238,34 @@ def console_massive(request):
                             
                         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                         
-                        if time_balance > 0:
-                            extra_hours = round(time_balance / 3600.0, 2)
-                        elif time_balance < 0:
+                        if time_balance < 0:
                             permission_hours = round(abs(time_balance) / 3600.0, 2)
+                            extra_hours = 0.0
+                        else:
+                            permission_hours = 0.0
+                            early_secs = 0
+                            if entry_dt < turn_start_datetime:
+                                early_secs = (turn_start_datetime - entry_dt).total_seconds()
+                                if early_secs < 30 * 60:
+                                    early_secs = 0
+                            late_secs = 0
+                            if exit_dt > turn_end_datetime:
+                                late_secs = (exit_dt - turn_end_datetime).total_seconds()
+                                if late_secs < 20 * 60:
+                                    late_secs = 0
+                            deficit_entry = 0
+                            if entry_dt > turn_start_datetime:
+                                if entry_just not in REMUNERADOS:
+                                    deficit_entry = (entry_dt - turn_start_datetime).total_seconds()
+                            deficit_exit = 0
+                            if exit_dt < turn_end_datetime:
+                                deficit_exit = (turn_end_datetime - exit_dt).total_seconds()
+                                
+                            valid_extra = early_secs + late_secs - (deficit_entry + deficit_exit)
+                            if valid_extra > 0:
+                                extra_hours = round(valid_extra / 3600.0, 2)
+                            else:
+                                extra_hours = 0.0
                     elif exit_dt and turn_of_day and turn_of_day.end_time and not entry_dt:
                         turn_end_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.end_time))
                         if turn_of_day.end_time < turn_of_day.start_time:

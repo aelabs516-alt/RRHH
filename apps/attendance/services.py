@@ -222,7 +222,7 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
                 
         effective_exit = exit_datetime
         if effective_exit > turn_end_datetime:
-            if (effective_exit - turn_end_datetime).total_seconds() < 30 * 60:
+            if (effective_exit - turn_end_datetime).total_seconds() < 20 * 60:
                 effective_exit = turn_end_datetime
                 
         worked_duration = effective_exit - effective_entry
@@ -235,7 +235,7 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
             
         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
         
-        if time_balance >= 30 * 60:
+        if time_balance > 0:
             extra_hours = time_balance / 3600.0
         elif time_balance < 0:
             permission_hours = abs(time_balance) / 3600.0
@@ -246,7 +246,7 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
             turn_end_datetime += timedelta(days=1)
             
         extra_time = exit_datetime - turn_end_datetime
-        if extra_time.total_seconds() >= 30 * 60:
+        if extra_time.total_seconds() >= 20 * 60:
             extra_hours = extra_time.total_seconds() / 3600.0
             
         if exit_datetime < turn_end_datetime:

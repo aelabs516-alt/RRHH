@@ -75,7 +75,7 @@ def console_individual(request):
                         
                 effective_exit = exit_dt
                 if effective_exit > turn_end_datetime:
-                    if (effective_exit - turn_end_datetime).total_seconds() < 30 * 60:
+                    if (effective_exit - turn_end_datetime).total_seconds() < 20 * 60:
                         effective_exit = turn_end_datetime
                         
                 worked_duration = effective_exit - effective_entry
@@ -86,7 +86,7 @@ def console_individual(request):
                     
                 time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                 
-                if time_balance >= 30 * 60:
+                if time_balance > 0:
                     extra_hours = round(time_balance / 3600.0, 2)
                 elif time_balance < 0:
                     permission_hours = round(abs(time_balance) / 3600.0, 2)
@@ -97,7 +97,7 @@ def console_individual(request):
                     turn_end_datetime += timedelta(days=1)
                 
                 extra_time = exit_dt - turn_end_datetime
-                if extra_time.total_seconds() >= 30 * 60:
+                if extra_time.total_seconds() > 0:
                     extra_hours = round(extra_time.total_seconds() / 3600.0, 2)
                 if exit_dt < turn_end_datetime:
                     early_time = turn_end_datetime - exit_dt
@@ -225,7 +225,7 @@ def console_massive(request):
                                 
                         effective_exit = exit_dt
                         if effective_exit > turn_end_datetime:
-                            if (effective_exit - turn_end_datetime).total_seconds() < 30 * 60:
+                            if (effective_exit - turn_end_datetime).total_seconds() < 20 * 60:
                                 effective_exit = turn_end_datetime
                                 
                         worked_duration = effective_exit - effective_entry
@@ -236,7 +236,7 @@ def console_massive(request):
                             
                         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                         
-                        if time_balance >= 30 * 60:
+                        if time_balance > 0:
                             extra_hours = round(time_balance / 3600.0, 2)
                         elif time_balance < 0:
                             permission_hours = round(abs(time_balance) / 3600.0, 2)
@@ -246,7 +246,7 @@ def console_massive(request):
                             turn_end_datetime += timedelta(days=1)
                         
                         extra_time = exit_dt - turn_end_datetime
-                        if extra_time.total_seconds() >= 30 * 60:
+                        if extra_time.total_seconds() > 0:
                             extra_hours = round(extra_time.total_seconds() / 3600.0, 2)
                             
                         if exit_dt < turn_end_datetime:

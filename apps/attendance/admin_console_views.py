@@ -69,6 +69,10 @@ def console_individual(request):
                 turn_duration = turn_end_datetime - turn_start_datetime
                 worked_duration = exit_dt - entry_dt
                 
+                REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+                if entry_justification in REMUNERADOS and entry_dt > turn_start_datetime:
+                    worked_duration += (entry_dt - turn_start_datetime)
+                    
                 time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                 
                 if time_balance >= 30 * 60:
@@ -95,17 +99,23 @@ def console_individual(request):
                 status = AttendanceStatus.A_TIEMPO.value
                 
             REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
-            if entry_justification in REMUNERADOS or exit_justification in REMUNERADOS:
-                permission_hours = 0.0
-                if turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
-                    # Calcular horas esperadas del turno
-                    t_start = datetime.combine(d, turn_of_day.start_time)
-                    t_end = datetime.combine(d, turn_of_day.end_time)
-                    if turn_of_day.end_time < turn_of_day.start_time:
-                        t_end += timedelta(days=1)
-                    expected_hours = round((t_end - t_start).total_seconds() / 3600.0, 2)
-                    if hours_worked < expected_hours:
-                        hours_worked = expected_hours
+            if exit_justification in REMUNERADOS:
+                if permission_hours > 0:
+                    permission_hours = 0.0
+            
+            if entry_justification in REMUNERADOS and turn_of_day and turn_of_day.start_time:
+                turn_start_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.start_time))
+                if entry_dt and entry_dt > turn_start_datetime:
+                    # Sumar las horas del permiso de la mañana a las horas trabajadas netas para no afectar el balance visual
+                    hours_worked = round(hours_worked + (entry_dt - turn_start_datetime).total_seconds() / 3600.0, 2)
+            
+            if exit_justification in REMUNERADOS and turn_of_day and turn_of_day.end_time:
+                turn_end_datetime = timezone.make_aware(datetime.combine(d, turn_of_day.end_time))
+                if turn_of_day.end_time < turn_of_day.start_time:
+                    turn_end_datetime += timedelta(days=1)
+                if exit_dt and exit_dt < turn_end_datetime:
+                    # Sumar las horas del permiso de la tarde a las horas trabajadas
+                    hours_worked = round(hours_worked + (turn_end_datetime - exit_dt).total_seconds() / 3600.0, 2)
 
             Attendance.objects.update_or_create(
                 user=colaborador, date=d,
@@ -198,6 +208,10 @@ def console_massive(request):
                         turn_duration = turn_end_datetime - turn_start_datetime
                         worked_duration = exit_dt - entry_dt
                         
+                        REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+                        if entry_just in REMUNERADOS and entry_dt > turn_start_datetime:
+                            worked_duration += (entry_dt - turn_start_datetime)
+                            
                         time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
                         
                         if time_balance >= 30 * 60:
@@ -224,16 +238,21 @@ def console_massive(request):
                         status = AttendanceStatus.A_TIEMPO.value
                         
                     REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
-                    if entry_just in REMUNERADOS or exit_just in REMUNERADOS:
-                        permission_hours = 0.0
-                        if turn_of_day and turn_of_day.start_time and turn_of_day.end_time:
-                            t_start = datetime.combine(selected_date, turn_of_day.start_time)
-                            t_end = datetime.combine(selected_date, turn_of_day.end_time)
-                            if turn_of_day.end_time < turn_of_day.start_time:
-                                t_end += timedelta(days=1)
-                            expected_hours = round((t_end - t_start).total_seconds() / 3600.0, 2)
-                            if hours_worked < expected_hours:
-                                hours_worked = expected_hours
+                    if exit_just in REMUNERADOS:
+                        if permission_hours > 0:
+                            permission_hours = 0.0
+                            
+                    if entry_just in REMUNERADOS and turn_of_day and turn_of_day.start_time:
+                        turn_start_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.start_time))
+                        if entry_dt and entry_dt > turn_start_datetime:
+                            hours_worked = round(hours_worked + (entry_dt - turn_start_datetime).total_seconds() / 3600.0, 2)
+                            
+                    if exit_just in REMUNERADOS and turn_of_day and turn_of_day.end_time:
+                        turn_end_datetime = timezone.make_aware(datetime.combine(selected_date, turn_of_day.end_time))
+                        if turn_of_day.end_time < turn_of_day.start_time:
+                            turn_end_datetime += timedelta(days=1)
+                        if exit_dt and exit_dt < turn_end_datetime:
+                            hours_worked = round(hours_worked + (turn_end_datetime - exit_dt).total_seconds() / 3600.0, 2)
 
                     Attendance.objects.update_or_create(
                         user=colaborador, date=selected_date,

@@ -272,6 +272,20 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
         worked_time = exit_datetime - attendance.entry_time
         attendance.hours_worked = round(worked_time.total_seconds() / 3600.0, 2)
         
+        # Aumentar las horas trabajadas si hubo un permiso remunerado
+        REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+        if getattr(attendance, 'entry_justification', 'NORMAL') in REMUNERADOS and turn and turn.start_time:
+            turn_start = timezone.make_aware(datetime.combine(date, turn.start_time))
+            if attendance.entry_time > turn_start:
+                attendance.hours_worked += round((attendance.entry_time - turn_start).total_seconds() / 3600.0, 2)
+                
+        if exit_justification in REMUNERADOS and turn and turn.end_time:
+            turn_end = timezone.make_aware(datetime.combine(date, turn.end_time))
+            if turn.end_time < turn.start_time:
+                turn_end += timedelta(days=1)
+            if exit_datetime < turn_end:
+                attendance.hours_worked += round((turn_end - exit_datetime).total_seconds() / 3600.0, 2)
+        
     if not turn and attendance.hours_worked > 0:
         # Si trabajó en un día de descanso (sin turno), todo es hora extra
         attendance.extra_hours = attendance.hours_worked

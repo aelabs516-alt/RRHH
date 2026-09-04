@@ -202,7 +202,6 @@ def dashboard(request):
         matrix = c.turns.last()
         turn_str = "Matriz Asignada" if matrix else "Sin Turno"
         
-        from django.db.models import Q
         details = []
         for att in c_att.filter(Q(extra_hours__gt=0) | Q(permission_hours__gt=0) | Q(entry_status='RETARDO')).order_by('-date'):
             details.append({

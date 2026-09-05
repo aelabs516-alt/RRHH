@@ -433,7 +433,7 @@ class VacationNotifyListView(LoginRequiredMixin, ListView):
 class VacationNotifyCreateView(LoginRequiredMixin, CreateView):
     model = VacationNotification
     fields = ['user', 'start_date', 'end_date', 'return_date', 'days_enjoyed']
-    template_name = 'crud/form.html'
+    template_name = 'hr/vacation_notify_form.html'
     success_url = reverse_lazy('vacations_notify_list')
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

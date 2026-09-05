@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Notificación de Vacaciones - RRHH{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-plane-departure"></i> Crear Notificación de Vacaciones</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" id="vacationForm">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        Corrija los errores a continuación.
+                        {{ form.errors }}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Colaborador</label>
+                        {{ form.user }}
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Fecha de Inicio (Salida)</label>
+                            <input type="date" name="start_date" id="id_start_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Fecha Final</label>
+                            <input type="date" name="end_date" id="id_end_date" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Días Hábiles a Disfrutar</label>
+                            <input type="number" name="days_enjoyed" id="id_days_enjoyed" class="form-control bg-light" readonly required>
+                            <small class="text-muted">Calculado automáticamente (Lunes a Sábado, excluye festivos)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Fecha de Regreso a Labores</label>
+                            <input type="date" name="return_date" id="id_return_date" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 text-end">
+                        <a href="{% url 'vacations_notify_list' %}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Registro</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Add form-control class to django generated select
+    const userSelect = document.getElementById('id_user');
+    if(userSelect) userSelect.classList.add('form-select');
+
+    const startInput = document.getElementById('id_start_date');
+    const endInput = document.getElementById('id_end_date');
+    const daysInput = document.getElementById('id_days_enjoyed');
+    const returnInput = document.getElementById('id_return_date');
+
+    let colombianHolidays = [];
+
+    // Fetch holidays from API
+    fetch('/api/holidays/')
+        .then(response => response.json())
+        .then(data => { 
+            colombianHolidays = data.holidays; 
+            calculateBusinessDays();
+        })
+        .catch(error => console.error('Error fetching holidays:', error));
+
+    function isHoliday(dateStr) {
+        return colombianHolidays.includes(dateStr);
+    }
+
+    function calculateBusinessDays() {
+        if (startInput.value && endInput.value) {
+            let startDate = new Date(startInput.value + "T00:00:00");
+            let endDate = new Date(endInput.value + "T00:00:00");
+            
+            if (endDate < startDate) {
+                daysInput.value = 0;
+                return;
+            }
+
+            let days = 0;
+            let currentDate = new Date(startDate);
+
+            // Iterate from start to end (inclusive)
+            while (currentDate <= endDate) {
+                let dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+                // Format YYYY-MM-DD
+                let dateStr = currentDate.toISOString().split('T')[0];
+
+                // Check if it's not Sunday (0) and not a holiday
+                if (dayOfWeek !== 0 && !isHoliday(dateStr)) {
+                    days++;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            daysInput.value = days;
+
+            // Auto-calculate return_date: Next business day after end_date
+            let returnDate = new Date(endDate);
+            returnDate.setDate(returnDate.getDate() + 1);
+            
+            while(true) {
+                let rDayOfWeek = returnDate.getDay();
+                let rDateStr = returnDate.toISOString().split('T')[0];
+                if (rDayOfWeek !== 0 && !isHoliday(rDateStr)) {
+                    // Found a business day
+                    returnInput.value = rDateStr;
+                    break;
+                }
+                returnDate.setDate(returnDate.getDate() + 1);
+            }
+        }
+    }
+
+    startInput.addEventListener('change', calculateBusinessDays);
+    endInput.addEventListener('change', calculateBusinessDays);
+});
+</script>
+{% endblock %}

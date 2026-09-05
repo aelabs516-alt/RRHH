@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Notificación de Vacaciones</title>
+    <style>
+        @page {
+            size: letter portrait;
+            margin: 2cm;
+            @frame footer_frame {
+                -pdf-frame-content: footer_content;
+                left: 50pt; width: 512pt; top: 772pt; height: 20pt;
+            }
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .title {
+            font-size: 16pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #000;
+        }
+        .subtitle {
+            font-size: 12pt;
+            color: #555;
+            margin-top: 5px;
+        }
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            background-color: #f0f0f0;
+            padding: 5px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-left: 4px solid #0d6efd;
+        }
+        .content-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .content-table th {
+            text-align: left;
+            padding: 8px;
+            background-color: #fafafa;
+            border-bottom: 1px solid #ddd;
+            width: 40%;
+        }
+        .content-table td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+        }
+        .declaration {
+            margin-top: 30px;
+            text-align: justify;
+            font-style: italic;
+        }
+        .signatures {
+            width: 100%;
+            margin-top: 60px;
+        }
+        .signature-box {
+            width: 45%;
+            float: left;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 60px;
+            padding-top: 5px;
+            font-weight: bold;
+        }
+        .signature-img {
+            max-height: 80px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="title">Notificación de Vacaciones</div>
+        <div class="subtitle">Fecha de Emisión: {{ vacation.created_at|date:"d/m/Y" }}</div>
+    </div>
+
+    <p>Por medio de la presente comunicación, se le notifica formalmente al colaborador sobre la programación de su periodo vacacional anual, de acuerdo con las políticas de la empresa y la legislación vigente.</p>
+
+    <div class="section-title">1. Datos del Colaborador</div>
+    <table class="content-table">
+        <tr>
+            <th>Nombre Completo:</th>
+            <td>{{ vacation.user.get_full_name }}</td>
+        </tr>
+        <tr>
+            <th>Documento de Identidad:</th>
+            <td>{{ vacation.user.document_number }}</td>
+        </tr>
+        <tr>
+            <th>Cargo:</th>
+            <td>{{ vacation.user.position.name|default:'N/A' }}</td>
+        </tr>
+        <tr>
+            <th>Área:</th>
+            <td>{{ vacation.user.area.name|default:'N/A' }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">2. Programación del Periodo</div>
+    <table class="content-table">
+        <tr>
+            <th>Fecha de Salida (Inicio):</th>
+            <td>{{ vacation.start_date|date:"d/m/Y" }}</td>
+        </tr>
+        <tr>
+            <th>Fecha Final (Terminación):</th>
+            <td>{{ vacation.end_date|date:"d/m/Y" }}</td>
+        </tr>
+        <tr>
+            <th>Fecha de Regreso a Labores:</th>
+            <td>{{ vacation.return_date|date:"d/m/Y" }}</td>
+        </tr>
+        <tr>
+            <th>Días Hábiles Otorgados:</th>
+            <td>{{ vacation.days_enjoyed }} días</td>
+        </tr>
+    </table>
+
+    <div class="declaration">
+        <strong>Declaración:</strong> Al firmar este documento, el colaborador certifica haber sido notificado oportunamente del disfrute de sus vacaciones correspondientes y se compromete a reintegrarse a sus labores en la fecha indicada.
+    </div>
+
+    <div class="signatures">
+        <div class="signature-box" style="margin-left: 25%;">
+            {% if vacation.employee_signature %}
+                <img src="{{ vacation.employee_signature.path }}" class="signature-img">
+            {% else %}
+                <div style="height: 80px;"></div>
+            {% endif %}
+            <div class="signature-line">
+                Firma del Colaborador<br>
+                C.C. {{ vacation.user.document_number }}
+            </div>
+        </div>
+    </div>
+
+    <div id="footer_content" style="text-align: center; color: #777; font-size: 9pt;">
+        Documento generado automáticamente por el Sistema RRHH
+    </div>
+
+</body>
+</html>

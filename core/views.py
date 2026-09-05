@@ -397,3 +397,83 @@ class PayrollUpdateView(LoginRequiredMixin, UpdateView):
         ctx = super().get_context_data(**kwargs)
         ctx['title'] = 'Editar Colilla de Nómina'
         return ctx
+
+# -- NOTIFICACION DE VACACIONES --
+from apps.hr.models import VacationNotification
+
+class VacationNotifyListView(LoginRequiredMixin, ListView):
+    model = VacationNotification
+    template_name = 'crud/list.html'
+    context_object_name = 'objects'
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role not in ['ADMIN', 'JEFE'] and not self.request.user.is_superuser:
+            qs = qs.filter(user=self.request.user)
+        
+        q = self.request.GET.get('q')
+        if q:
+            qs = qs.filter(user__document_number__icontains=q)
+        return qs
+        
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['title'], ctx['headers'] = 'Notificaciones de Vacaciones', ['Documento', 'Colaborador', 'Fecha Inicio', 'Fecha Regreso', 'Días Hábiles', 'Estado']
+        if self.request.user.role in ['ADMIN', 'JEFE'] or self.request.user.is_superuser:
+            ctx['create_url'] = 'vacations_notify_create'
+            ctx['search_enabled'] = True
+            ctx['delete_url_name'] = 'vacations_notify_delete'
+        else:
+            ctx['create_url'] = None
+            ctx['search_enabled'] = False
+        ctx['update_url'] = 'vacations_notify_update'
+        ctx['pdf_url_name'] = 'vacations_notify_pdf'
+        return ctx
+
+class VacationNotifyCreateView(LoginRequiredMixin, CreateView):
+    model = VacationNotification
+    fields = ['user', 'start_date', 'end_date', 'return_date', 'days_enjoyed']
+    template_name = 'crud/form.html'
+    success_url = reverse_lazy('vacations_notify_list')
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['title'] = 'Crear Notificación de Vacaciones'
+        return ctx
+
+class VacationNotifyUpdateView(LoginRequiredMixin, UpdateView):
+    model = VacationNotification
+    fields = [] # Solo firma
+    template_name = 'hr/vacation_sign_form.html'
+    success_url = reverse_lazy('vacations_notify_list')
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role not in ['ADMIN', 'JEFE'] and not self.request.user.is_superuser:
+            qs = qs.filter(user=self.request.user)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['title'] = 'Firma de Notificación de Vacaciones'
+        return ctx
+        
+    def form_valid(self, form):
+        signature_data = self.request.POST.get('signature_base64')
+        if signature_data and ';base64,' in signature_data:
+            import base64
+            from django.core.files.base import ContentFile
+            format, imgstr = signature_data.split(';base64,')
+            ext = format.split('/')[-1]
+            data = ContentFile(base64.b64decode(imgstr), name=f'firma_vacaciones_{self.object.id}.{ext}')
+            form.instance.employee_signature = data
+        return super().form_valid(form)
+
+class VacationNotifyDeleteView(LoginRequiredMixin, DeleteView):
+    model = VacationNotification
+    template_name = 'crud/confirm_delete.html'
+    success_url = reverse_lazy('vacations_notify_list')
+    
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'JEFE'] and not request.user.is_superuser:
+            return HttpResponseForbidden("No tienes permiso para eliminar notificaciones.")
+        return super().dispatch(request, *args, **kwargs)

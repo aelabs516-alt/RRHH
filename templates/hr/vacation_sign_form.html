@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Notificación de Vacaciones - RRHH{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header text-white" style="background-color: var(--bs-primary);">
+                <h5 class="mb-0"><i class="fas fa-plane-departure"></i> Notificación de Vacaciones</h5>
+            </div>
+            <div class="card-body p-5">
+                <!-- Encabezado del Documento -->
+                <div class="text-center mb-5">
+                    <h3 class="fw-bold text-uppercase">Notificación de Periodo Vacacional</h3>
+                    <p class="text-muted">Fecha de Emisión: {{ object.created_at|date:"d \d\e F \d\e Y" }}</p>
+                </div>
+
+                <form method="post" id="vacationForm">
+                    {% csrf_token %}
+
+                    <!-- Datos del Colaborador -->
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">1. Datos del Colaborador</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Nombre Completo</label>
+                            <input type="text" class="form-control fw-bold" value="{{ object.user.get_full_name }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Documento de Identidad</label>
+                            <input type="text" class="form-control" value="{{ object.user.document_number }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Cargo</label>
+                            <input type="text" class="form-control" value="{{ object.user.position.name|default:'N/A' }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">Área</label>
+                            <input type="text" class="form-control" value="{{ object.user.area.name|default:'N/A' }}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Datos de Vacaciones -->
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 mt-4">2. Programación del Periodo</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold">Fecha de Inicio (Salida)</label>
+                            <input type="text" class="form-control fw-bold text-primary" value="{{ object.start_date|date:'d/m/Y' }}" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold">Fecha Final</label>
+                            <input type="text" class="form-control fw-bold text-primary" value="{{ object.end_date|date:'d/m/Y' }}" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold">Fecha de Regreso a Labores</label>
+                            <input type="text" class="form-control fw-bold text-success" value="{{ object.return_date|date:'d/m/Y' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold">Días Hábiles a Disfrutar</label>
+                            <input type="text" class="form-control fw-bold" value="{{ object.days_enjoyed }} días" readonly>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-4">
+                        <strong><i class="fas fa-info-circle"></i> Declaración:</strong> Por medio de la presente, se notifica formalmente al colaborador sobre el inicio de su periodo vacacional en las fechas estipuladas. Al firmar este documento, el colaborador confirma haber sido notificado oportunamente.
+                    </div>
+
+                    <hr class="my-5">
+
+                    <!-- Lienzo de Firmas -->
+                    <h5 class="fw-bold mb-4">Firma de Notificación</h5>
+                    <div class="row justify-content-center">
+                        <!-- Firma Colaborador -->
+                        <div class="col-md-6 text-center">
+                            <label class="form-label fw-bold text-muted mb-3">Firma del Colaborador <span class="text-danger">*</span></label>
+                            
+                            {% if object.employee_signature %}
+                            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 8px;">
+                                <img src="{{ object.employee_signature.url }}" alt="Firma Colaborador" style="max-height: 130px; max-width: 100%;">
+                            </div>
+                            <span class="badge bg-success mt-2"><i class="fas fa-check"></i> Notificación Firmada</span>
+                            {% else %}
+                            <div>
+                                <canvas id="signature-pad" class="signature-pad" width="300" height="150" style="border: 1px solid #00b87c; border-radius: 8px; cursor: crosshair; background: #fff; touch-action: none;"></canvas>
+                                <input type="hidden" name="signature_base64" id="signature_base64">
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-signature">Limpiar Firma</button>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <p class="mt-2 mb-0 fw-bold">{{ object.user.get_full_name }}</p>
+                            <p class="small text-muted">{{ object.user.document_number }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 text-end">
+                        <a href="{% url 'vacations_notify_list' %}" class="btn btn-secondary me-2">{% if object.employee_signature %}Volver{% else %}Cancelar{% endif %}</a>
+                        {% if not object.employee_signature %}
+                        <button type="submit" class="btn btn-success" id="submitBtn">
+                            <i class="fas fa-check-circle"></i> Firmar Notificación
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<!-- Signature Pad JS -->
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const canvas = document.getElementById('signature-pad');
+    if (canvas) {
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            penColor: 'rgb(0, 0, 0)'
+        });
+
+        document.getElementById('clear-signature').addEventListener('click', function () {
+            signaturePad.clear();
+        });
+
+        document.getElementById('vacationForm').addEventListener('submit', function (e) {
+            if (signaturePad.isEmpty()) {
+                e.preventDefault();
+                alert("Por favor, proporcione su firma en el recuadro antes de guardar.");
+            } else {
+                document.getElementById('signature_base64').value = signaturePad.toDataURL();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

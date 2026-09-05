@@ -55,3 +55,26 @@ class PayrollSlip(models.Model):
 
     def get_row_values(self):
         return [self.user.document_number, self.user.get_full_name(), self.month.strftime('%Y-%m'), 'Descargar PDF']
+
+class VacationNotification(models.Model):
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='vacation_notifications')
+    created_at = models.DateTimeField('Fecha de Emisión', auto_now_add=True)
+    
+    start_date = models.DateField('Fecha de Inicio (Salida)')
+    end_date = models.DateField('Fecha Final')
+    return_date = models.DateField('Fecha de Regreso a Labores')
+    days_enjoyed = models.PositiveIntegerField('Días Hábiles a Disfrutar')
+    
+    employee_signature = models.ImageField('Firma del Colaborador', upload_to='secure/vacations/employee_signatures/', null=True, blank=True)
+    document_pdf = models.FileField('Notificación en PDF', upload_to='secure/vacations/documents/', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Notificación de Vacaciones'
+        verbose_name_plural = 'Notificaciones de Vacaciones'
+
+    def __str__(self):
+        return f"Notificación Vacaciones - {self.user} ({self.created_at.strftime('%Y-%m-%d')})"
+
+    def get_row_values(self):
+        estado = "Firmado" if self.employee_signature else "Pendiente"
+        return [self.user.document_number, self.user.get_full_name(), self.start_date.strftime('%d/%m/%Y'), self.return_date.strftime('%d/%m/%Y'), self.days_enjoyed, estado]

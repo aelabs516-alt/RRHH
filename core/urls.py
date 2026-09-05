@@ -54,6 +54,13 @@ urlpatterns = [
     path('certificates/labor/', certificates_views.certificate_labor, name='certificate_labor'),
     path('certificates/payroll/', certificates_views.download_payroll, name='download_payroll'),
     
+    
+    path('vacations/', core_views.VacationNotifyListView.as_view(), name='vacations_notify_list'),
+    path('vacations/create/', core_views.VacationNotifyCreateView.as_view(), name='vacations_notify_create'),
+    path('vacations/<int:pk>/update/', core_views.VacationNotifyUpdateView.as_view(), name='vacations_notify_update'),
+    path('vacations/<int:pk>/delete/', core_views.VacationNotifyDeleteView.as_view(), name='vacations_notify_delete'),
+    path('vacations/<int:pk>/pdf/', certificates_views.download_vacation_pdf, name='vacations_notify_pdf'),
+
     path('payroll/', core_views.PayrollListView.as_view(), name='payroll_list'),
     path('payroll/create/', core_views.PayrollCreateView.as_view(), name='payroll_create'),
     path('payroll/<int:pk>/update/', core_views.PayrollUpdateView.as_view(), name='payroll_update'),

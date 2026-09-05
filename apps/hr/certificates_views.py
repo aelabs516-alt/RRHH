@@ -226,3 +226,27 @@ def download_permission_pdf(request, pk):
     if pisa_status.err:
         return HttpResponse('Error generando PDF', status=500)
     return response
+
+from apps.hr.models import VacationNotification
+
+@login_required
+def download_vacation_pdf(request, pk):
+    vacation = get_object_or_404(VacationNotification, pk=pk)
+    
+    if request.user.role not in ['ADMIN', 'JEFE'] and not request.user.is_superuser:
+        if vacation.user != request.user:
+            return HttpResponse("No tienes permiso para descargar este documento.", status=403)
+            
+    context = {'vacation': vacation}
+    
+    html = render_to_string('hr/pdf/vacation_notification.html', context, request=request)
+    
+    response = HttpResponse(content_type='application/pdf')
+    filename = f'Notificacion_Vacaciones_{vacation.user.document_number}_{vacation.created_at.strftime("%Y%m%d")}.pdf'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    pisa_status = pisa.CreatePDF(html, dest=response, link_callback=link_callback)
+    
+    if pisa_status.err:
+        return HttpResponse('Error generando PDF', status=500)
+    return response

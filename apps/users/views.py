@@ -16,16 +16,26 @@ class CustomLoginView(LoginView):
         from django.contrib import messages
         from django.urls import reverse_lazy
         
-        # Si es colaborador, revisar actas pendientes
+        # Si es colaborador, revisar actas y notificaciones pendientes
         if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
-            has_pending = DisciplinaryAct.objects.filter(
+            has_pending_acts = DisciplinaryAct.objects.filter(
                 Q(employee_signature='') | Q(employee_signature__isnull=True),
                 user=user
             ).exists()
             
-            if has_pending:
+            if has_pending_acts:
                 messages.warning(self.request, "Tienes actas disciplinarias pendientes por revisar y firmar.")
                 return reverse_lazy('acts_list')
+                
+            from apps.hr.models import VacationNotification
+            has_pending_vacations = VacationNotification.objects.filter(
+                Q(employee_signature='') | Q(employee_signature__isnull=True),
+                user=user
+            ).exists()
+            
+            if has_pending_vacations:
+                messages.warning(self.request, "Tienes notificaciones de vacaciones pendientes por firmar.")
+                return reverse_lazy('vacations_notify_list')
                 
         return url or reverse_lazy('dashboard')
 
@@ -40,16 +50,26 @@ from apps.hr.models import DisciplinaryAct
 def dashboard(request):
     user = request.user
     
-    # Check for pending acts on dashboard entry for collaborators
+    # Check for pending acts and vacations on dashboard entry for collaborators
     if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
-        has_pending = DisciplinaryAct.objects.filter(
+        has_pending_acts = DisciplinaryAct.objects.filter(
             Q(employee_signature='') | Q(employee_signature__isnull=True),
             user=user
         ).exists()
-        if has_pending:
+        if has_pending_acts:
             from django.contrib import messages
             messages.warning(request, "Tienes actas disciplinarias pendientes por revisar y firmar.")
             return redirect('acts_list')
+            
+        from apps.hr.models import VacationNotification
+        has_pending_vacations = VacationNotification.objects.filter(
+            Q(employee_signature='') | Q(employee_signature__isnull=True),
+            user=user
+        ).exists()
+        if has_pending_vacations:
+            from django.contrib import messages
+            messages.warning(request, "Tienes notificaciones de vacaciones pendientes por firmar.")
+            return redirect('vacations_notify_list')
     
     # Parámetros de filtrado
     year = request.GET.get('year')

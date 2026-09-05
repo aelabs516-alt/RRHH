@@ -159,6 +159,12 @@ def dashboard(request):
                     if current_date.weekday() != 6 and current_date not in colombian_holidays:
                         used_working_days += 1
                     current_date += timedelta(days=1)
+                    
+            # Tambien descontar los dias de Notificaciones de Vacaciones firmadas
+            from apps.hr.models import VacationNotification
+            vac_notifs = VacationNotification.objects.filter(user=c).exclude(Q(employee_signature='') | Q(employee_signature__isnull=True))
+            for vn in vac_notifs:
+                used_working_days += vn.days_enjoyed
             
             balance = max(0, round(earned_vacation - used_working_days, 1))
             vacaciones_por_colab.append({'name': c.get_full_name(), 'balance': balance})

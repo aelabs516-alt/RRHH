@@ -20,7 +20,7 @@
         }
         .header-table {
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .logo { 
             max-width: 120px;
@@ -66,15 +66,6 @@
             text-align: justify;
             font-style: italic;
         }
-        .signatures {
-            width: 100%;
-            margin-top: 40px;
-        }
-        .signature-box {
-            width: 45%;
-            float: left;
-            text-align: center;
-        }
         .signature-line {
             border-top: 1px solid #000;
             margin-top: 10px;
@@ -102,7 +93,7 @@
         </tr>
     </table>
 
-    <p style="margin-top: 10px;">Por medio de la presente comunicación, se le notifica formalmente al colaborador sobre la programación de su periodo vacacional anual, de acuerdo con las políticas de la empresa y la legislación vigente.</p>
+    <p style="margin-top: 5px;">Por medio de la presente comunicación, se le notifica formalmente al colaborador sobre la programación de su periodo vacacional anual, de acuerdo con las políticas de la empresa y la legislación vigente.</p>
 
     <div class="section-title">1. Datos del Colaborador</div>
     <table class="content-table">
@@ -148,33 +139,38 @@
         <strong>Declaración:</strong> Al firmar este documento, el colaborador certifica haber sido notificado oportunamente del disfrute de sus vacaciones correspondientes y se compromete a reintegrarse a sus labores en la fecha indicada.
     </div>
 
-    <div class="signatures">
-        <!-- Firma Jefe / Admin -->
-        <div class="signature-box" style="margin-right: 5%;">
-            {% if vacation.manager_signature %}
-                <img src="{{ vacation.manager_signature.path }}" class="signature-img">
-            {% else %}
-                <div style="height: 70px;"></div>
-            {% endif %}
-            <div class="signature-line">
-                Firma del Empleador<br>
-                {{ vacation.manager_name|default:"Administración" }}
-            </div>
-        </div>
+    <!-- FIRMAS EN TABLA PARA EVITAR SALTOS DE LÍNEA EN xhtml2pdf -->
+    <table style="width: 100%; margin-top: 35px; border: none;">
+        <tr>
+            <!-- Firma Jefe / Admin -->
+            <td style="width: 45%; text-align: center; vertical-align: bottom; border: none;">
+                {% if vacation.manager_signature %}
+                    <img src="{{ vacation.manager_signature.path }}" class="signature-img">
+                {% else %}
+                    <div style="height: 70px;"></div>
+                {% endif %}
+                <div class="signature-line">
+                    Firma del Empleador<br>
+                    {{ vacation.manager_name|default:"Administración" }}
+                </div>
+            </td>
+            
+            <td style="width: 10%; border: none;"></td> <!-- Espacio Central -->
 
-        <!-- Firma Colaborador -->
-        <div class="signature-box" style="margin-left: 5%;">
-            {% if vacation.employee_signature %}
-                <img src="{{ vacation.employee_signature.path }}" class="signature-img">
-            {% else %}
-                <div style="height: 70px;"></div>
-            {% endif %}
-            <div class="signature-line">
-                Firma del Colaborador<br>
-                C.C. {{ vacation.user.document_number }}
-            </div>
-        </div>
-    </div>
+            <!-- Firma Colaborador -->
+            <td style="width: 45%; text-align: center; vertical-align: bottom; border: none;">
+                {% if vacation.employee_signature %}
+                    <img src="{{ vacation.employee_signature.path }}" class="signature-img">
+                {% else %}
+                    <div style="height: 70px;"></div>
+                {% endif %}
+                <div class="signature-line">
+                    Firma del Colaborador<br>
+                    C.C. {{ vacation.user.document_number }}
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <div id="footer_content" style="text-align: center; color: #777; font-size: 8pt;">
         Documento generado automáticamente por el Sistema RRHH

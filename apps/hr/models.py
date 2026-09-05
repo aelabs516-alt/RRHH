@@ -65,6 +65,8 @@ class VacationNotification(models.Model):
     return_date = models.DateField('Fecha de Regreso a Labores')
     days_enjoyed = models.PositiveIntegerField('Días Hábiles a Disfrutar')
     
+    manager_signature = models.ImageField('Firma del Jefe/Admin', upload_to='secure/vacations/manager_signatures/', null=True, blank=True)
+    manager_name = models.CharField('Nombre del Jefe/Admin', max_length=150, null=True, blank=True)
     employee_signature = models.ImageField('Firma del Colaborador', upload_to='secure/vacations/employee_signatures/', null=True, blank=True)
     document_pdf = models.FileField('Notificación en PDF', upload_to='secure/vacations/documents/', null=True, blank=True)
 

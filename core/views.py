@@ -439,6 +439,12 @@ class VacationNotifyCreateView(LoginRequiredMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         ctx['title'] = 'Crear Notificación de Vacaciones'
         return ctx
+        
+    def form_valid(self, form):
+        if self.request.user.signature:
+            form.instance.manager_signature = self.request.user.signature
+        form.instance.manager_name = self.request.user.get_full_name()
+        return super().form_valid(form)
 
 class VacationNotifyUpdateView(LoginRequiredMixin, UpdateView):
     model = VacationNotification

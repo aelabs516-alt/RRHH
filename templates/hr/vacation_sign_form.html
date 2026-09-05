@@ -73,8 +73,22 @@
                     <hr class="my-5">
 
                     <!-- Lienzo de Firmas -->
-                    <h5 class="fw-bold mb-4">Firma de Notificación</h5>
-                    <div class="row justify-content-center">
+                    <h5 class="fw-bold mb-4">Firmas del Proceso</h5>
+                    <div class="row">
+                        <!-- Firma Jefe / Admin -->
+                        <div class="col-md-6 text-center border-end">
+                            <label class="form-label fw-bold text-muted mb-3">Firma del Empleador</label>
+                            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 8px;">
+                                {% if object.manager_signature %}
+                                    <img src="{{ object.manager_signature.url }}" alt="Firma Empleador" style="max-height: 130px; max-width: 100%;">
+                                {% else %}
+                                    <span class="text-muted small"><i class="fas fa-exclamation-circle"></i> Firma no registrada</span>
+                                {% endif %}
+                            </div>
+                            <p class="mt-2 mb-0 fw-bold">{{ object.manager_name|default:"Administración" }}</p>
+                            <p class="small text-muted">Jefe / Administrador</p>
+                        </div>
+
                         <!-- Firma Colaborador -->
                         <div class="col-md-6 text-center">
                             <label class="form-label fw-bold text-muted mb-3">Firma del Colaborador <span class="text-danger">*</span></label>

@@ -157,6 +157,7 @@
                 <a href="{% url 'certificate_labor' %}">📄 Constancia Laboral</a>
                 <a href="{% url 'download_payroll' %}">💵 Descargar Colilla PDF</a>
                 <a href="{% url 'permissions_list' %}">🌴 Permisos y Vacaciones</a>
+                <a href="{% url 'vacations_notify_list' %}">✈️ Notificaciones Vacacionales</a>
                 
                 {% if user.role == 'ADMIN' or user.role == 'JEFE' or user.is_superuser %}
                 <hr>

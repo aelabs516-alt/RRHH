@@ -204,8 +204,8 @@ def dashboard(request):
         else:
             tardies_count = tardies_qs.count()
             
-        # Alerta solo si acumula 3 o más en este lapso
-        if tardies_count >= 3:
+        # Mostrar progreso hacia la falta (incluso si es 1 o 2)
+        if tardies_count > 0:
             critical_tardies.append({
                 'user__first_name': u.first_name,
                 'user__last_name': u.last_name,

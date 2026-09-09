@@ -174,25 +174,38 @@ def dashboard(request):
 
     # Panel de Auditoría: Retardos pendientes por generar acta
     critical_tardies = []
-    # Obtener usuarios que tienen al menos un retardo
-    users_with_tardies = User.objects.filter(attendances__entry_status=AttendanceStatus.RETARDO).distinct()
+    
+    # 30 days rolling window logic
+    thirty_days_ago = timezone.now().date() - timedelta(days=30)
+    
+    # Obtener usuarios que tienen al menos un retardo en los ultimos 30 dias
+    users_with_tardies = User.objects.filter(
+        attendances__entry_status=AttendanceStatus.RETARDO,
+        attendances__date__gte=thirty_days_ago
+    ).distinct()
     
     for u in users_with_tardies:
         # Buscar el acta más reciente de este usuario
         latest_act = DisciplinaryAct.objects.filter(user=u).order_by('-date_created').first()
-        tardies_qs = Attendance.objects.filter(user=u, entry_status=AttendanceStatus.RETARDO)
+        
+        # Filtrar solo los últimos 30 días
+        tardies_qs = Attendance.objects.filter(
+            user=u, 
+            entry_status=AttendanceStatus.RETARDO,
+            date__gte=thirty_days_ago
+        )
         
         if latest_act:
-            # Contar los retardos DESPUÉS de la fecha/hora exacta del último acta
+            # Contar los retardos DESPUÉS de la fecha/hora exacta del último acta y dentro de los últimos 30 días
             tardies_count = tardies_qs.filter(
                 Q(entry_time__gt=latest_act.date_created) |
                 Q(entry_time__isnull=True, date__gt=latest_act.date_created.date())
             ).count()
         else:
-            # Si nunca ha tenido un acta, se cuentan todos
             tardies_count = tardies_qs.count()
             
-        if tardies_count > 0:
+        # Alerta solo si acumula 3 o más en este lapso
+        if tardies_count >= 3:
             critical_tardies.append({
                 'user__first_name': u.first_name,
                 'user__last_name': u.last_name,

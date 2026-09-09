@@ -326,20 +326,33 @@ from apps.users.models import User
 from apps.hr.models import FaultSeverity
 from apps.attendance.models import Attendance, AttendanceStatus
 
+from datetime import timedelta
+
 @login_required
 def acts_auto_generate(request, doc_number):
     user_obj = get_object_or_404(User, document_number=doc_number)
     now = timezone.now()
-    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    thirty_days_ago = now - timedelta(days=30)
+    
+    # Obtener último acta para no volver a castigar retardos pasados
+    latest_act = DisciplinaryAct.objects.filter(user=user_obj).order_by('-date_created').first()
     
     tardies = Attendance.objects.filter(
-        user=user_obj, date__gte=start_of_month, date__lte=now.date(), entry_status=AttendanceStatus.RETARDO
-    ).order_by('date')
+        user=user_obj, 
+        date__gte=thirty_days_ago.date(), 
+        date__lte=now.date(), 
+        entry_status=AttendanceStatus.RETARDO
+    )
+    
+    if latest_act:
+        tardies = tardies.filter(entry_time__gt=latest_act.date_created)
+        
+    tardies = tardies.order_by('date')
     
     count = tardies.count()
-    if count <= 4:
+    if count <= 3:
         severity = FaultSeverity.LEVE
-    elif count == 5:
+    elif count == 4:
         severity = FaultSeverity.GRAVE
     else:
         severity = FaultSeverity.MUY_GRAVE
@@ -347,7 +360,7 @@ def acts_auto_generate(request, doc_number):
     dates_str = ", ".join([f"{t.date.strftime('%d/%m/%Y')} - {t.entry_time.astimezone(timezone.get_current_timezone()).strftime('%H:%M')}" for t in tardies if t.entry_time])
     
     description = (
-        f"El colaborador durante el mes, registró llegadas tardías en las siguientes fechas, con hora de ingreso: "
+        f"El colaborador registró la acumulación de {count} llegadas tardías injustificadas en un lapso de 30 días calendario, en las siguientes fechas con hora de ingreso: "
         f"[{dates_str}].\n\n"
         "Lo anterior evidencia una conducta reiterada de incumplimiento del horario laboral "
         "establecido por la empresa, situación que ha sido previamente informada al colaborador."

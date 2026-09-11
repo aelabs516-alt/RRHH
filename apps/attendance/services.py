@@ -259,11 +259,15 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
                 early_secs = (turn_start_datetime - attendance.entry_time).total_seconds()
                 if early_secs < 30 * 60:
                     early_secs = 0
+                elif getattr(attendance, 'entry_justification', 'NORMAL') in ['PERSONAL', 'OTROS']:
+                    early_secs = 0
                     
             late_secs = 0
             if exit_datetime > turn_end_datetime:
                 late_secs = (exit_datetime - turn_end_datetime).total_seconds()
                 if late_secs < 20 * 60:
+                    late_secs = 0
+                elif exit_justification in ['PERSONAL', 'OTROS']:
                     late_secs = 0
                     
             # Si compensó llegando tarde o saliendo temprano (ya lo cubrimos en worked_duration, pero 

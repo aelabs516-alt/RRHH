@@ -96,10 +96,14 @@ def console_individual(request):
                         early_secs = (turn_start_datetime - entry_dt).total_seconds()
                         if early_secs < 30 * 60:
                             early_secs = 0
+                        elif entry_justification in ['PERSONAL', 'OTROS']:
+                            early_secs = 0
                     late_secs = 0
                     if exit_dt > turn_end_datetime:
                         late_secs = (exit_dt - turn_end_datetime).total_seconds()
                         if late_secs < 20 * 60:
+                            late_secs = 0
+                        elif exit_justification in ['PERSONAL', 'OTROS']:
                             late_secs = 0
                     deficit_entry = 0
                     if entry_dt > turn_start_datetime:
@@ -270,10 +274,14 @@ def console_massive(request):
                                 early_secs = (turn_start_datetime - entry_dt).total_seconds()
                                 if early_secs < 30 * 60:
                                     early_secs = 0
+                                elif entry_just in ['PERSONAL', 'OTROS']:
+                                    early_secs = 0
                             late_secs = 0
                             if exit_dt > turn_end_datetime:
                                 late_secs = (exit_dt - turn_end_datetime).total_seconds()
                                 if late_secs < 20 * 60:
+                                    late_secs = 0
+                                elif exit_just in ['PERSONAL', 'OTROS']:
                                     late_secs = 0
                             deficit_entry = 0
                             if entry_dt > turn_start_datetime:

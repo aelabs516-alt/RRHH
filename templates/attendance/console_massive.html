@@ -70,7 +70,6 @@
                 <option value="OTROS" {% if d.attendance.entry_justification == 'OTROS' %}selected{% endif %}>Otros</option>
             </optgroup>
         </select>
-        <input type="text" name="entry_obs_{{ d.user.id }}" class="form-control form-control-sm" style="font-size:0.75rem; padding: 0.1rem;" placeholder="Obs." value="{{ d.attendance.entry_observations|default:'' }}">
     </div>
     <div>
         <small class="d-block text-muted" style="font-size:0.7em;">Salida</small>
@@ -90,7 +89,16 @@
                 <option value="OTROS" {% if d.attendance.exit_justification == 'OTROS' %}selected{% endif %}>Otros</option>
             </optgroup>
         </select>
-        <input type="text" name="exit_obs_{{ d.user.id }}" class="form-control form-control-sm" style="font-size:0.75rem; padding: 0.1rem;" placeholder="Obs." value="{{ d.attendance.exit_observations|default:'' }}">
+    </div>
+</td>
+<td>
+    <div class="mb-1">
+        <small class="d-block text-muted" style="font-size:0.7em;">Obs. Ingreso</small>
+        <input type="text" name="entry_obs_{{ d.user.id }}" class="form-control form-control-sm mb-1" style="font-size:0.75rem; padding: 0.1rem;" placeholder="Obs." value="{{ d.attendance.entry_observations|default:'' }}">
+    </div>
+    <div>
+        <small class="d-block text-muted" style="font-size:0.7em;">Obs. Salida</small>
+        <input type="text" name="exit_obs_{{ d.user.id }}" class="form-control form-control-sm mb-1" style="font-size:0.75rem; padding: 0.1rem;" placeholder="Obs." value="{{ d.attendance.exit_observations|default:'' }}">
     </div>
 </td>
                     <td class="text-center align-middle">

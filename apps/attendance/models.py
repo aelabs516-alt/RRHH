@@ -31,6 +31,7 @@ class Attendance(models.Model):
     
     JUSTIFICATION_CHOICES = [
         ('NORMAL', 'Ninguna / Normal'),
+        ('TIEMPO_EXTRA', 'Tiempo Extra'),
         ('CITA_MEDICA', 'Permiso remunerado: Cita médica'),
         ('ELECCIONES', 'Permiso remunerado: Elecciones / Jurado'),
         ('CALAMIDAD', 'Permiso remunerado: Calamidad'),

@@ -317,3 +317,42 @@ class ScheduleLunchAndDashboardTests(TestCase):
         resp_list = client.get(reverse('permissions_list'))
         self.assertEqual(resp_list.status_code, 200)
         self.assertContains(resp_list, '24.0 h')
+
+    def test_all_redesigned_pages_render_cleanly(self):
+        client = Client()
+
+        # Login (unauthenticated)
+        resp_login = client.get(reverse('login'))
+        self.assertEqual(resp_login.status_code, 200)
+        self.assertContains(resp_login, 'css/app.css')
+        self.assertContains(resp_login, 'themeToggle')
+
+        # Authenticated admin pages
+        client.force_login(self.admin)
+        admin_urls = [
+            'dashboard',
+            'attendance:mark',
+            'attendance:console_individual',
+            'attendance:console_massive',
+            'attendance:map',
+            'users_list',
+            'users_create',
+            'areas_list',
+            'positions_list',
+            'turns_list',
+            'holidays_list',
+            'permissions_list',
+            'permissions_create',
+            'acts_list',
+            'vacations_notify_list',
+            'vacations_notify_create',
+            'certificate_labor',
+            'download_payroll',
+            'payroll_list',
+            'payroll_mass_upload',
+        ]
+        for url_name in admin_urls:
+            resp = client.get(reverse(url_name))
+            self.assertEqual(resp.status_code, 200, f"Failed to render {url_name}")
+            self.assertContains(resp, 'css/app.css')
+            self.assertContains(resp, 'themeToggle')

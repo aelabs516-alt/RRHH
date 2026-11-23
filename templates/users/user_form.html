@@ -1,63 +1,77 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ title }} - RRHH{% endblock %}
+{% block title %}{{ title }} — RRHH{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h2>{{ title }}</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-user-edit"></i></span>
+            <span>{{ title }}</span>
+        </h1>
+        <p class="page-subtitle">Administra la ficha técnica del colaborador y su matriz semanal de turnos.</p>
+    </div>
 </div>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
+<div class="card mb-4">
+    <div class="card-body p-4">
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
-            
+
             {% if form.non_field_errors %}
-                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                <div class="alert alert-danger mb-4">{{ form.non_field_errors }}</div>
             {% endif %}
 
-            <h5 class="mb-3">Datos del Colaborador</h5>
-            <div class="row">
+            <div class="section-divider-title">
+                <i class="fas fa-id-badge"></i> Datos del Colaborador
+            </div>
+
+            <div class="row g-3">
             {% for field in form %}
                 {% if field.name == 'signature' %}
-                <div class="col-md-12 mb-3" id="signature_container" style="display: none;">
-                    <hr class="my-3">
-                    <label class="form-label fw-bold">{{ field.label }}</label>
-                    <div class="d-flex flex-wrap gap-4">
-                        <div>
-                            <p class="text-muted small mb-1">Opción 1: Dibuja la firma en el recuadro</p>
-                            <canvas id="signature-pad" class="border rounded" style="background-color: var(--bs-body-bg); border-color: var(--border-color)!important;" width="400" height="200"></canvas>
-                            <br>
-                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="clear-signature">Limpiar Firma</button>
+                <div class="col-12 mt-4" id="signature_container" style="display: none;">
+                    <div class="section-divider-title">
+                        <i class="fas fa-pen-nib"></i> {{ field.label }}
+                    </div>
+                    <div class="row g-4 align-items-start">
+                        <div class="col-md-6">
+                            <p class="text-muted small mb-2">Opción 1: Dibuja la firma en el recuadro (tinta oscura sobre papel blanco para PDF)</p>
+                            <canvas id="signature-pad" class="signature-canvas" width="400" height="180"></canvas>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-signature">
+                                    <i class="fas fa-eraser"></i> Limpiar Firma
+                                </button>
+                            </div>
                             <input type="hidden" name="signature_base64" id="signature_base64">
                         </div>
-                        <div>
-                            <p class="text-muted small mb-1">Opción 2: Sube una imagen existente</p>
+                        <div class="col-md-6">
+                            <p class="text-muted small mb-2">Opción 2: Sube una imagen existente (PNG/JPG)</p>
                             {{ field }}
                         </div>
                     </div>
                     {% if field.errors %}
-                        <div class="text-danger small">{{ field.errors }}</div>
+                        <div class="text-danger small mt-1">{{ field.errors }}</div>
                     {% endif %}
                 </div>
                 {% else %}
-                <div class="col-md-4 mb-3">
-                    <label class="form-label fw-bold">{{ field.label }}</label>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
                     {% if field.errors %}
-                        <div class="text-danger small">{{ field.errors }}</div>
+                        <div class="text-danger small mt-1">{{ field.errors }}</div>
                     {% endif %}
                 </div>
                 {% endif %}
             {% endfor %}
             </div>
 
-            <hr class="my-4">
-            
-            <h5 class="mb-3">Matriz Semanal de Turnos</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered text-center align-middle">
-                    <thead class="table-light">
+            <div class="section-divider-title mt-5">
+                <i class="fas fa-calendar-week"></i> Matriz Semanal de Turnos
+            </div>
+
+            <div class="table-responsive border rounded-3">
+                <table class="table text-center align-middle mb-0">
+                    <thead>
                         <tr>
                             <th>Lunes</th>
                             <th>Martes</th>
@@ -131,25 +145,32 @@
                 </table>
             </div>
 
-            <div class="text-end mt-4">
-                <a href="{{ success_url }}" class="btn btn-secondary">Cancelar</a>
-                <button type="submit" class="btn btn-success">Guardar</button>
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                <a href="{% url 'users_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar Colaborador
+                </button>
             </div>
         </form>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Estilos de inputs
-        let inputs = document.querySelectorAll('input, select:not([name^="turn_"]), textarea');
+        let inputs = document.querySelectorAll('form input, form select:not([name^="turn_"]), form textarea');
         inputs.forEach(input => {
-            if(input.type !== 'checkbox' && input.type !== 'radio') {
+            if (input.type === 'hidden') return;
+            if (input.tagName === 'SELECT') {
+                input.classList.add('form-select');
+            } else if (input.type !== 'checkbox' && input.type !== 'radio') {
                 input.classList.add('form-control');
             } else {
                 input.classList.add('form-check-input');
             }
-            if(input.name === 'salary') {
+
+            if (input.name === 'salary') {
                 input.type = 'text';
                 const formatCurrency = (val) => {
                     let num = parseFloat(val.replace(/,/g, ''));
@@ -166,7 +187,7 @@
             }
         });
 
-        // Lógica Mostrar/Ocultar Firma
+        // Mostrar/Ocultar Firma para ADMIN / JEFE
         const roleSelect = document.querySelector('select[name="role"]');
         const signatureContainer = document.getElementById('signature_container');
 
@@ -179,74 +200,69 @@
                 }
             }
         }
-        
+
         if (roleSelect) {
             roleSelect.addEventListener('change', toggleSignature);
             toggleSignature();
         }
 
-        // Lógica Canvas Firma
+        // Canvas Firma (siempre tinta oscura sobre papel blanco para nitidez en PDF)
         const canvas = document.getElementById('signature-pad');
         if (canvas) {
             const ctx = canvas.getContext('2d');
             let isDrawing = false;
             let lastX = 0;
             let lastY = 0;
-            let hasDrawn = false;
 
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.2;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            
-            // Set stroke color based on theme
-            const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-            ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
+            ctx.strokeStyle = '#0f172a';
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+
+            function startDraw(e) {
+                isDrawing = true;
+                const pos = getPos(e);
+                lastX = pos.x;
+                lastY = pos.y;
+            }
 
             function draw(e) {
                 if (!isDrawing) return;
                 e.preventDefault();
-
-                // Handle touch and mouse
-                const rect = canvas.getBoundingClientRect();
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                
-                const x = clientX - rect.left;
-                const y = clientY - rect.top;
-
+                const pos = getPos(e);
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
-                ctx.lineTo(x, y);
+                ctx.lineTo(pos.x, pos.y);
                 ctx.stroke();
-
-                [lastX, lastY] = [x, y];
-                hasDrawn = true;
+                lastX = pos.x;
+                lastY = pos.y;
                 document.getElementById('signature_base64').value = canvas.toDataURL('image/png');
             }
 
-            canvas.addEventListener('mousedown', (e) => {
-                isDrawing = true;
-                const rect = canvas.getBoundingClientRect();
-                lastX = e.clientX - rect.left;
-                lastY = e.clientY - rect.top;
-            });
+            canvas.addEventListener('mousedown', startDraw);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', () => isDrawing = false);
             canvas.addEventListener('mouseout', () => isDrawing = false);
 
-            canvas.addEventListener('touchstart', (e) => {
-                isDrawing = true;
-                const rect = canvas.getBoundingClientRect();
-                lastX = e.touches[0].clientX - rect.left;
-                lastY = e.touches[0].clientY - rect.top;
-            });
-            canvas.addEventListener('touchmove', draw);
+            canvas.addEventListener('touchstart', startDraw, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
             canvas.addEventListener('touchend', () => isDrawing = false);
 
             document.getElementById('clear-signature').addEventListener('click', () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 document.getElementById('signature_base64').value = "";
-                hasDrawn = false;
             });
         }
     });

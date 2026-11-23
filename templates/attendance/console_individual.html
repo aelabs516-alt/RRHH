@@ -1,113 +1,152 @@
 {% extends 'base.html' %}
 
-{% block title %}Marcación Individual - Consola Admin{% endblock %}
+{% block title %}Marcación Individual — Consola Admin{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h2>Marcación Manual (Individual)</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-user-clock"></i></span>
+            <span>Marcación Manual (Individual)</span>
+        </h1>
+        <p class="page-subtitle">Registra o corrige la entrada y salida de un colaborador con cálculo automático de almuerzo y novedades.</p>
+    </div>
 </div>
 
 {% if messages %}
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
     {% endfor %}
 {% endif %}
 
-<div class="card shadow-sm" style="max-width: 600px;">
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label fw-bold">Colaborador</label>
-                <select name="user_id" class="form-select" required>
-                    <option value="">Seleccione un colaborador...</option>
-                    {% for u in users %}
-                    <option value="{{ u.id }}">{{ u.document_number }} - {{ u.get_full_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label fw-bold">Fecha de Registro</label>
-                <input type="date" name="date" class="form-control" value="{{ today }}" required>
-            </div>
-            
-            <div class="row mb-3">
-                <div class="col">
-                    <label class="form-label fw-bold">Hora Ingreso</label>
-                    <input type="time" name="entry_time" class="form-control">
-                </div>
-                <div class="col">
-                    <label class="form-label fw-bold">Hora Salida</label>
-                    <input type="time" name="exit_time" class="form-control">
-                </div>
-            </div>
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Justificación Ingreso (Llegada tarde)</label>
-                    <select name="entry_justification" class="form-select">
-                        <option value="NORMAL">Ninguna / Normal</option>
-                        <option value="TIEMPO_EXTRA">Tiempo Extra</option>
-                        <optgroup label="Permisos Remunerados">
-                            <option value="CITA_MEDICA">Cita médica</option>
-                            <option value="ELECCIONES">Elecciones / Jurado</option>
-                            <option value="CALAMIDAD">Calamidad</option>
-                            <option value="ESCOLAR">Obligaciones escolares</option>
-                            <option value="JUDICIAL">Citas Judiciales</option>
-                            <option value="LUTO">Luto</option>
-                            <option value="ENFERMEDAD">Enfermedad General</option>
-                        </optgroup>
-                        <optgroup label="Permisos NO Remunerados">
-                            <option value="PERSONAL">Asuntos personales</option>
-                            <option value="OTROS">Otros</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Observaciones Ingreso</label>
-                    <textarea name="entry_observations" class="form-control" rows="2"></textarea>
-                </div>
-            </div>
+                    <div class="section-divider-title">
+                        <i class="fas fa-user"></i> Colaborador y Fecha
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-7">
+                            <label class="form-label">Colaborador</label>
+                            <select name="user_id" class="form-select" required>
+                                <option value="">Seleccione un colaborador...</option>
+                                {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.document_number }} — {{ u.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Fecha de Registro</label>
+                            <input type="date" name="date" class="form-control" value="{{ today }}" required>
+                        </div>
+                    </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Justificación Salida (Anticipada/Extra)</label>
-                    <select name="exit_justification" class="form-select">
-                        <option value="NORMAL">Ninguna / Normal</option>
-                        <option value="TIEMPO_EXTRA">Tiempo Extra</option>
-                        <optgroup label="Permisos Remunerados">
-                            <option value="CITA_MEDICA">Cita médica</option>
-                            <option value="ELECCIONES">Elecciones / Jurado</option>
-                            <option value="CALAMIDAD">Calamidad</option>
-                            <option value="ESCOLAR">Obligaciones escolares</option>
-                            <option value="JUDICIAL">Citas Judiciales</option>
-                            <option value="LUTO">Luto</option>
-                            <option value="ENFERMEDAD">Enfermedad General</option>
-                        </optgroup>
-                        <optgroup label="Permisos NO Remunerados">
-                            <option value="PERSONAL">Asuntos personales</option>
-                            <option value="OTROS">Otros</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Observaciones Salida</label>
-                    <textarea name="exit_observations" class="form-control" rows="2"></textarea>
-                </div>
-            </div>
+                    <div class="section-divider-title">
+                        <i class="fas fa-clock"></i> Horario Marcado
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Hora Ingreso</label>
+                            <input type="time" name="entry_time" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hora Salida</label>
+                            <input type="time" name="exit_time" class="form-control">
+                        </div>
+                        <div class="col-12" id="live_hours_wrap" style="display:none;">
+                            <div class="alert alert-info py-2 px-3 mb-0 d-inline-flex align-items-center gap-2">
+                                <i class="fas fa-calculator"></i>
+                                <span id="live_hours" class="fw-bold"></span>
+                            </div>
+                        </div>
+                    </div>
 
-            <button type="submit" class="btn btn-primary">Guardar Registro</button>
-        </form>
+                    <div class="section-divider-title">
+                        <i class="fas fa-clipboard-check"></i> Justificaciones y Observaciones
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Justificación Ingreso (Anticipado / Tarde)</label>
+                            <select name="entry_justification" class="form-select">
+                                <option value="NORMAL">Ninguna / Normal</option>
+                                <option value="TIEMPO_EXTRA">Tiempo Extra</option>
+                                <optgroup label="Permisos Remunerados">
+                                    <option value="CITA_MEDICA">Cita médica</option>
+                                    <option value="ELECCIONES">Elecciones / Jurado</option>
+                                    <option value="CALAMIDAD">Calamidad</option>
+                                    <option value="ESCOLAR">Obligaciones escolares</option>
+                                    <option value="JUDICIAL">Citas Judiciales</option>
+                                    <option value="LUTO">Luto</option>
+                                    <option value="ENFERMEDAD">Enfermedad General</option>
+                                </optgroup>
+                                <optgroup label="Permisos NO Remunerados">
+                                    <option value="PERSONAL">Asuntos personales</option>
+                                    <option value="OTROS">Otros</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Observaciones Ingreso</label>
+                            <textarea name="entry_observations" class="form-control" rows="2" placeholder="Opcional..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Justificación Salida (Anticipada / Extra)</label>
+                            <select name="exit_justification" class="form-select">
+                                <option value="NORMAL">Ninguna / Normal</option>
+                                <option value="TIEMPO_EXTRA">Tiempo Extra</option>
+                                <optgroup label="Permisos Remunerados">
+                                    <option value="CITA_MEDICA">Cita médica</option>
+                                    <option value="ELECCIONES">Elecciones / Jurado</option>
+                                    <option value="CALAMIDAD">Calamidad</option>
+                                    <option value="ESCOLAR">Obligaciones escolares</option>
+                                    <option value="JUDICIAL">Citas Judiciales</option>
+                                    <option value="LUTO">Luto</option>
+                                    <option value="ENFERMEDAD">Enfermedad General</option>
+                                </optgroup>
+                                <optgroup label="Permisos NO Remunerados">
+                                    <option value="PERSONAL">Asuntos personales</option>
+                                    <option value="OTROS">Otros</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Observaciones Salida</label>
+                            <textarea name="exit_observations" class="form-control" rows="2" placeholder="Opcional..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Registro
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const userSelect = document.querySelector('select[name="user_id"]');
         const dateInput = document.querySelector('input[name="date"]');
         const entryInput = document.querySelector('input[name="entry_time"]');
         const exitInput = document.querySelector('input[name="exit_time"]');
+        const liveWrap = document.getElementById('live_hours_wrap');
+        const hrDisplay = document.getElementById('live_hours');
         const userTurns = {{ user_turns_json|safe|default:"{}" }};
 
         function toMinutes(hhmm) {
@@ -124,7 +163,7 @@
                 let turnPair = null;
                 if (dateInput && dateInput.value) {
                     const dObj = new Date(dateInput.value + "T00:00:00");
-                    const jsDay = dObj.getDay(); // 0=Dom, 1=Lun .. 5=Vie, 6=Sab
+                    const jsDay = dObj.getDay();
                     isWeekday = jsDay >= 1 && jsDay <= 5;
                     if (userSelect && userSelect.value && userTurns[userSelect.value]) {
                         turnPair = userTurns[userSelect.value][String(jsDay)] || null;
@@ -156,14 +195,10 @@
                 }
 
                 const diff = Math.max(0, workedMin) / 60;
-                let hrDisplay = document.getElementById('live_hours');
-                if (!hrDisplay) {
-                    hrDisplay = document.createElement('div');
-                    hrDisplay.id = 'live_hours';
-                    hrDisplay.className = 'mt-2 fw-bold text-success';
-                    exitInput.parentNode.appendChild(hrDisplay);
-                }
                 hrDisplay.innerText = "Horas Efectivas Calculadas: " + diff.toFixed(2) + " h";
+                liveWrap.style.display = 'block';
+            } else {
+                liveWrap.style.display = 'none';
             }
         }
 

@@ -1,93 +1,159 @@
 {% extends 'base.html' %}
 
-{% block title %}Marcar Asistencia{% endblock %}
+{% block title %}Marcar Asistencia — RRHH{% endblock %}
 
 {% block extra_head %}
 <style>
     .camera-container {
         position: relative;
         width: 100%;
-        max-width: 500px;
+        max-width: 480px;
         aspect-ratio: 5 / 4;
         margin: 0 auto;
-        border: 2px solid #ccc;
-        border-radius: 8px;
+        border: 2px solid var(--border-color);
+        border-radius: 18px;
         overflow: hidden;
-        background: #000;
+        background: #020617;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
     }
-    #video { 
-        width: 100%; 
+    #video {
+        width: 100%;
         height: 100%;
         object-fit: cover;
-        display: block; 
+        display: block;
     }
-    /* Silueta centrada en la cámara */
     .silhouette {
         position: absolute;
         top: 10%;
-        left: 25%;
-        width: 50%;
-        height: 70%;
-        border: 3px dashed rgba(255, 255, 255, 0.7);
-        border-radius: 50% 50% 40% 40%;
+        left: 26%;
+        width: 48%;
+        height: 72%;
+        border: 2.5px dashed rgba(255, 255, 255, 0.65);
+        border-radius: 50% 50% 42% 42%;
         pointer-events: none;
+        box-shadow: 0 0 0 999px rgba(2, 6, 23, 0.20);
+    }
+    .camera-status-bar {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        right: 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        pointer-events: none;
+    }
+    .sensor-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: rgba(15, 23, 42, 0.72);
+        color: #f8fafc;
+        backdrop-filter: blur(8px);
+    }
+    .sensor-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #f59e0b;
+    }
+    .sensor-chip.ready .sensor-dot {
+        background: #10b981;
+    }
+    .sensor-chip.error .sensor-dot {
+        background: #ef4444;
     }
     #canvas { display: none; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12 text-center">
-        <h3 class="mb-4">Registro de Asistencia</h3>
-        
-        <div id="alertBox" class="alert d-none"></div>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-camera"></i></span>
+            <span>Registro de Asistencia</span>
+        </h1>
+        <p class="page-subtitle">Ubica tu rostro dentro del recuadro y verifica que cámara y ubicación estén activas.</p>
+    </div>
+</div>
 
-        <div class="camera-container mb-3">
-            <video id="video" autoplay playsinline></video>
-            <div class="silhouette"></div>
-            <canvas id="canvas"></canvas>
-        </div>
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8 col-xl-6">
+        <div class="card">
+            <div class="card-body p-4 text-center">
+                <div id="alertBox" class="alert d-none text-start mb-3"></div>
 
-        <div class="mb-3 d-flex justify-content-center gap-3">
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="actionType" id="ingreso" value="ingreso" checked>
-                <label class="form-check-label" for="ingreso">Ingreso</label>
+                <div class="camera-container mb-4">
+                    <video id="video" autoplay playsinline></video>
+                    <div class="silhouette"></div>
+                    <div class="camera-status-bar">
+                        <span class="sensor-chip" id="camStatusChip">
+                            <span class="sensor-dot"></span> Cámara
+                        </span>
+                        <span class="sensor-chip" id="gpsStatusChip">
+                            <span class="sensor-dot"></span> GPS
+                        </span>
+                    </div>
+                    <canvas id="canvas"></canvas>
+                </div>
+
+                <!-- Tipo de Marcación (Segmented Control) -->
+                <div class="mb-4">
+                    <div class="segmented-control" role="radiogroup" aria-label="Tipo de marcación">
+                        <input type="radio" name="actionType" id="ingreso" value="ingreso" checked>
+                        <label for="ingreso"><i class="fas fa-sign-in-alt"></i> Ingreso</label>
+
+                        <input type="radio" name="actionType" id="salida" value="salida">
+                        <label for="salida"><i class="fas fa-sign-out-alt"></i> Salida</label>
+                    </div>
+                </div>
+
+                <!-- Justificación / Motivo -->
+                <div class="mb-4 mx-auto text-start" id="obsContainer" style="display: none; max-width: 480px;">
+                    <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center gap-2" id="obsMessage">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Justificación requerida</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="justification">Motivo de la novedad</label>
+                        <select id="justification" class="form-select">
+                            <option value="NORMAL" selected disabled>Seleccione un motivo...</option>
+                            <option value="TIEMPO_EXTRA" class="fw-bold text-success">⏱️ Tiempo Extra (Laboral)</option>
+                            <optgroup label="Permisos Remunerados (No descuentan tiempo)">
+                                <option value="CITA_MEDICA">Cita médica</option>
+                                <option value="ELECCIONES">Elecciones / Jurado</option>
+                                <option value="CALAMIDAD">Calamidad</option>
+                                <option value="ESCOLAR">Obligaciones escolares</option>
+                                <option value="JUDICIAL">Citas Judiciales</option>
+                                <option value="LUTO">Luto</option>
+                                <option value="ENFERMEDAD">Enfermedad General</option>
+                            </optgroup>
+                            <optgroup label="Permisos NO Remunerados (Descuentan tiempo)">
+                                <option value="PERSONAL">Asuntos personales</option>
+                                <option value="OTROS">Otros / Ingresar texto</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div id="textObsContainer" style="display: none;">
+                        <label class="form-label" for="observations">Describa el motivo</label>
+                        <textarea id="observations" class="form-control" rows="2" placeholder="Escriba los detalles aquí..."></textarea>
+                    </div>
+                </div>
+
+                <div class="mx-auto" style="max-width: 480px;">
+                    <button id="snapBtn" class="btn btn-primary btn-lg w-100" disabled>
+                        <i class="fas fa-spinner fa-spin"></i> Iniciando sensores...
+                    </button>
+                </div>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="actionType" id="salida" value="salida">
-                <label class="form-check-label" for="salida">Salida</label>
-            </div>
         </div>
-
-        <div class="mb-3 w-50 mx-auto text-start" id="obsContainer" style="display: none;">
-            <div class="alert alert-warning mb-2" id="obsMessage">Justificación requerida</div>
-            <label class="form-label fw-bold">Motivo</label>
-            <select id="justification" class="form-select mb-2">
-                <option value="NORMAL" selected disabled>Seleccione un motivo...</option>
-                <option value="TIEMPO_EXTRA" class="fw-bold text-success">⏱️ Tiempo Extra (Laboral)</option>
-                  <optgroup label="Permisos Remunerados (No descuentan tiempo)">
-                    <option value="CITA_MEDICA">Cita médica</option>
-                    <option value="ELECCIONES">Elecciones / Jurado</option>
-                    <option value="CALAMIDAD">Calamidad</option>
-                    <option value="ESCOLAR">Obligaciones escolares</option>
-                    <option value="JUDICIAL">Citas Judiciales</option>
-                    <option value="LUTO">Luto</option>
-                    <option value="ENFERMEDAD">Enfermedad General</option>
-                </optgroup>
-                <optgroup label="Permisos NO Remunerados (Descuentan tiempo)">
-                    <option value="PERSONAL">Asuntos personales</option>
-                    <option value="OTROS">Otros / Ingresar texto</option>
-                </optgroup>
-            </select>
-            
-            <div id="textObsContainer" style="display:none;">
-                <label class="form-label fw-bold">Describa el motivo</label>
-                <textarea id="observations" class="form-control" rows="2" placeholder="Escriba aquí..."></textarea>
-            </div>
-        </div>
-
-        <button id="snapBtn" class="btn btn-success btn-lg" disabled>Iniciando sensores...</button>
     </div>
 </div>
 {% endblock %}
@@ -104,50 +170,59 @@
     const justInput = document.getElementById('justification');
     const textObsContainer = document.getElementById('textObsContainer');
     const obsMessage = document.getElementById('obsMessage');
+    const camStatusChip = document.getElementById('camStatusChip');
+    const gpsStatusChip = document.getElementById('gpsStatusChip');
 
     justInput.addEventListener('change', function() {
-        if(this.value === 'OTROS' || this.value === 'PERSONAL') {
+        if (this.value === 'OTROS' || this.value === 'PERSONAL') {
             textObsContainer.style.display = 'block';
         } else {
             textObsContainer.style.display = 'none';
         }
     });
 
-    // Variables de sensores
     let currentLat = null;
     let currentLng = null;
     let cameraReady = false;
     let locationReady = false;
 
+    function updateSensorChips() {
+        camStatusChip.classList.toggle('ready', cameraReady);
+        gpsStatusChip.classList.toggle('ready', locationReady);
+    }
+
     function checkSensors() {
+        updateSensorChips();
         if (cameraReady && locationReady) {
             snapBtn.disabled = false;
-            snapBtn.innerText = 'Capturar y Marcar';
+            snapBtn.innerHTML = '<i class="fas fa-camera"></i> Capturar y Marcar';
             alertBox.classList.add('d-none');
         } else {
             snapBtn.disabled = true;
-            snapBtn.innerText = 'Permita Cámara y Ubicación...';
-            
+            snapBtn.innerHTML = '<i class="fas fa-lock"></i> Permita Cámara y Ubicación...';
+
             alertBox.classList.remove('d-none');
-            alertBox.className = 'alert alert-danger';
-            
-            let msg = "Para marcar asistencia DEBE permitir los accesos:<br>";
-            if (!cameraReady) msg += "- Acceso a la cámara no detectado o denegado.<br>";
-            if (!locationReady) msg += "- Acceso a la ubicación (GPS) no detectado o denegado.";
+            alertBox.className = 'alert alert-danger text-start mb-3';
+
+            let msg = "<strong>Para marcar asistencia debe permitir los accesos:</strong><br>";
+            if (!cameraReady) msg += "&bull; Acceso a la cámara no detectado o denegado.<br>";
+            if (!locationReady) msg += "&bull; Acceso a la ubicación (GPS) no detectado o denegado.";
             alertBox.innerHTML = msg;
         }
     }
 
     // Inicializar Cámara
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-        .then(stream => { 
-            video.srcObject = stream; 
+        .then(stream => {
+            video.srcObject = stream;
             cameraReady = true;
+            camStatusChip.classList.remove('error');
             checkSensors();
         })
         .catch(err => {
             console.error("Error cámara:", err);
             cameraReady = false;
+            camStatusChip.classList.add('error');
             checkSensors();
         });
 
@@ -158,28 +233,29 @@
                 currentLat = position.coords.latitude;
                 currentLng = position.coords.longitude;
                 locationReady = true;
+                gpsStatusChip.classList.remove('error');
                 checkSensors();
             },
             (err) => {
                 console.warn("No se pudo obtener la ubicación: ", err);
                 locationReady = false;
+                gpsStatusChip.classList.add('error');
                 checkSensors();
             },
             { enableHighAccuracy: true, maximumAge: 0 }
         );
     } else {
-        console.warn("Geolocalización no soportada por el navegador");
         locationReady = false;
+        gpsStatusChip.classList.add('error');
         checkSensors();
     }
 
-    function showAlert(msg, isError=false) {
+    function showAlert(msg, isError = false) {
         alertBox.innerText = msg;
-        alertBox.className = 'alert ' + (isError ? 'alert-danger' : 'alert-success');
+        alertBox.className = 'alert text-start mb-3 ' + (isError ? 'alert-danger' : 'alert-success');
         alertBox.classList.remove('d-none');
     }
 
-    // Toggle campo observaciones
     actionRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             if (e.target.value === 'salida') {
@@ -188,15 +264,12 @@
                 obsContainer.style.display = 'none';
                 obsInput.value = '';
                 justInput.value = 'NORMAL';
-                obsContainer.style.display = 'none';
                 textObsContainer.style.display = 'none';
             }
         });
     });
 
-    // Capturar foto y enviar
     snapBtn.addEventListener('click', () => {
-        // Doble verificación de seguridad
         if (!cameraReady || !locationReady || currentLat === null || currentLng === null) {
             showAlert("Es obligatorio permitir el acceso a su cámara y ubicación para marcar asistencia.", true);
             return;
@@ -206,54 +279,44 @@
         const observations = obsInput.value;
         const justification = justInput.value;
 
-        // Configurar canvas a una proporción 5:4 exacta
         const targetRatio = 5 / 4;
-        
-        // Determinar dimensiones de recorte (crop) basadas en el video real
         let sourceWidth = video.videoWidth;
         let sourceHeight = video.videoHeight;
         let sourceX = 0;
         let sourceY = 0;
-        
         const videoRatio = sourceWidth / sourceHeight;
-        
+
         if (videoRatio > targetRatio) {
-            // El video es más ancho que 5:4 (ej. 16:9)
             let newWidth = sourceHeight * targetRatio;
             sourceX = (sourceWidth - newWidth) / 2;
             sourceWidth = newWidth;
         } else if (videoRatio < targetRatio) {
-            // El video es más alto que 5:4 (ej. orientación vertical en móvil)
             let newHeight = sourceWidth / targetRatio;
             sourceY = (sourceHeight - newHeight) / 2;
             sourceHeight = newHeight;
         }
-        
-        // Fijar dimensiones del canvas para la foto resultante (Comprimido)
-        canvas.width = 320; 
-        canvas.height = canvas.width / targetRatio; // 320x256
-        
+
+        canvas.width = 320;
+        canvas.height = canvas.width / targetRatio;
+
         const context = canvas.getContext('2d');
-        // Dibujar solo la porción 5:4 del video (simulando object-fit: cover)
         context.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
-        
-        // Agregar Marca de Agua (Fecha y Hora)
+
         const now = new Date();
         const dateTimeStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-        
+
         context.fillStyle = "rgba(0, 0, 0, 0.5)";
         context.fillRect(0, canvas.height - 30, canvas.width, 30);
-        
+
         context.font = "14px Arial";
         context.fillStyle = "white";
         context.textAlign = "right";
         context.fillText(dateTimeStr, canvas.width - 10, canvas.height - 10);
-        
-        // Obtener Base64 con alta compresión (0.5 = 50% calidad JPEG)
+
         const photoData = canvas.toDataURL('image/jpeg', 0.5);
 
         snapBtn.disabled = true;
-        snapBtn.innerText = 'Procesando...';
+        snapBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
 
         fetch("{% url 'attendance:process_api' %}", {
             method: 'POST',
@@ -272,7 +335,7 @@
         })
         .then(res => res.json())
         .then(data => {
-            if(data.status === 'success') {
+            if (data.status === 'success') {
                 showAlert(data.message, false);
                 obsInput.value = '';
                 justInput.value = 'NORMAL';
@@ -280,19 +343,19 @@
                 textObsContainer.style.display = 'none';
             } else {
                 showAlert(data.message, true);
-                if(data.require_justification) {
-                    obsMessage.innerText = data.message;
+                if (data.require_justification) {
+                    obsMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>' + data.message + '</span>';
                     obsContainer.style.display = 'block';
                     justInput.focus();
                 }
             }
         })
-        .catch(err => {
+        .catch(() => {
             showAlert('Error de conexión', true);
         })
         .finally(() => {
             snapBtn.disabled = false;
-            snapBtn.innerText = 'Capturar y Marcar';
+            snapBtn.innerHTML = '<i class="fas fa-camera"></i> Capturar y Marcar';
         });
     });
 </script>

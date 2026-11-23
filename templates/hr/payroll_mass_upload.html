@@ -1,33 +1,62 @@
 {% extends 'base.html' %}
 
-{% block title %}Carga Masiva de Nómina - RRHH{% endblock %}
+{% block title %}Carga Masiva de Nómina — RRHH{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h2>Carga Masiva de Colillas (PDF)</h2>
-    <p class="text-muted">El formato del archivo debe ser estrictamente: <strong>numerocedula_mes_año.pdf</strong> (Ej: 123456789_08_2026.pdf)</p>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-cloud-upload-alt"></i></span>
+            <span>Carga Masiva de Colillas (PDF)</span>
+        </h1>
+        <p class="page-subtitle">Sube múltiples comprobantes de pago en un solo paso.</p>
+    </div>
+    <a href="{% url 'payroll_list' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Volver a Nómina
+    </a>
 </div>
 
 {% if messages %}
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4" role="alert">
         {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
     </div>
     {% endfor %}
 {% endif %}
 
-<div class="card shadow-sm" style="max-width: 600px;">
-    <div class="card-body">
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label for="payroll_files" class="form-label fw-bold">Seleccionar archivos PDF</label>
-                <input class="form-control" type="file" id="payroll_files" name="payroll_files" accept=".pdf" multiple required>
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body p-4">
+                <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+                    <i class="fas fa-info-circle mt-1"></i>
+                    <div>
+                        El nombre de cada archivo debe cumplir el formato:
+                        <strong>numerocedula_mes_año.pdf</strong><br>
+                        <span class="small opacity-75">Ejemplo: <code>123456789_08_2026.pdf</code></span>
+                    </div>
+                </div>
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-4 p-4 rounded-3 text-center" style="background: var(--surface-subtle); border: 2px dashed var(--input-border);">
+                        <div class="mb-2" style="font-size: 2rem; color: var(--brand);">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <label for="payroll_files" class="form-label d-block mb-2">Seleccionar archivos PDF</label>
+                        <input class="form-control" type="file" id="payroll_files" name="payroll_files" accept=".pdf" multiple required>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{% url 'payroll_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Subir Colillas
+                        </button>
+                    </div>
+                </form>
             </div>
-            <button type="submit" class="btn btn-primary">Subir Colillas</button>
-            <a href="{% url 'payroll_list' %}" class="btn btn-outline-secondary">Volver a la lista</a>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}

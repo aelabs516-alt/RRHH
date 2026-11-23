@@ -1,39 +1,59 @@
 {% extends 'base.html' %}
 
-{% block title %}Descargar Constancia de Nómina{% endblock %}
+{% block title %}Descargar Colilla de Nómina — RRHH{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h2>Descargar Colilla de Nómina</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-file-invoice-dollar"></i></span>
+            <span>Descargar Colilla de Nómina</span>
+        </h1>
+        <p class="page-subtitle">Consulta y descarga el comprobante de pago correspondiente al periodo deseado.</p>
+    </div>
 </div>
 
 {% if messages %}
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
     {% endfor %}
 {% endif %}
 
-<div class="card shadow-sm" style="max-width: 600px;">
-    <div class="card-body">
-        <form method="post" target="_blank">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-                <label class="form-label fw-bold">Documento de Identidad</label>
-                {% if user.role in 'ADMIN,JEFE' or user.is_superuser %}
-                <input type="text" name="document_number" class="form-control" required placeholder="Digite el documento del colaborador">
-                {% else %}
-                <input type="text" name="document_number" class="form-control" value="{{ user.document_number }}" readonly>
-                {% endif %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <span class="d-flex align-items-center gap-2">
+                    <i class="fas fa-search-dollar" style="color: var(--brand);"></i> Consultar Comprobante
+                </span>
             </div>
+            <div class="card-body p-4">
+                <form method="post" target="_blank">
+                    {% csrf_token %}
 
-            <div class="mb-3">
-                <label class="form-label fw-bold">Mes y Año</label>
-                <input type="month" name="month" class="form-control" required>
+                    <div class="mb-3">
+                        <label class="form-label">Documento de Identidad</label>
+                        {% if user.role in 'ADMIN,JEFE' or user.is_superuser %}
+                        <input type="text" name="document_number" class="form-control" required placeholder="Digite el documento del colaborador">
+                        {% else %}
+                        <input type="text" name="document_number" class="form-control tabular-nums" value="{{ user.document_number }}" readonly>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Mes y Año</label>
+                        <input type="month" name="month" class="form-control" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-download"></i> Buscar y Descargar Colilla
+                    </button>
+                </form>
             </div>
-
-            <button type="submit" class="btn btn-primary">Buscar y Descargar Colilla</button>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}

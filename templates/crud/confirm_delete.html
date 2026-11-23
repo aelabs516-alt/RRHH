@@ -1,20 +1,25 @@
 {% extends 'base.html' %}
 
-{% block title %}Confirmar Eliminación{% endblock %}
+{% block title %}Confirmar Eliminación — RRHH{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center mt-4">
-    <div class="col-md-6">
-        <div class="card shadow-sm" style="border-color: #dc3545;">
+    <div class="col-12 col-md-7 col-lg-5">
+        <div class="card audit-card-danger">
             <div class="card-body text-center p-5">
-                <i class="fas fa-exclamation-triangle text-danger fa-4x mb-4"></i>
-                <h4 class="mb-3">¿Estás seguro que deseas eliminar este registro?</h4>
-                <p class="text-muted mb-4 fs-5">{{ object }}</p>
-                
-                <form method="post">
+                <div class="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style="width: 72px; height: 72px; background: var(--danger-soft); color: var(--danger); font-size: 1.85rem;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h4 class="fw-bold mb-2">¿Eliminar este registro?</h4>
+                <p class="text-muted mb-2 small">Esta acción es permanente y no se puede deshacer.</p>
+                <div class="p-3 rounded-3 mb-4 fw-semibold" style="background: var(--surface-subtle); border: 1px solid var(--border-subtle);">
+                    {{ object }}
+                </div>
+
+                <form method="post" class="d-flex justify-content-center gap-2">
                     {% csrf_token %}
-                    <a href="javascript:history.back()" class="btn btn-secondary px-4">Cancelar</a>
-                    <button type="submit" class="btn btn-danger px-4 ms-2">
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary px-4">Cancelar</a>
+                    <button type="submit" class="btn btn-danger px-4">
                         <i class="fas fa-trash"></i> Sí, Eliminar
                     </button>
                 </form>

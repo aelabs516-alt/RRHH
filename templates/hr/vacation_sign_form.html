@@ -1,122 +1,127 @@
 {% extends 'base.html' %}
 
-{% block title %}Notificación de Vacaciones - RRHH{% endblock %}
+{% block title %}Notificación de Vacaciones — RRHH{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header text-white" style="background-color: var(--bs-primary);">
-                <h5 class="mb-0"><i class="fas fa-plane-departure"></i> Notificación de Vacaciones</h5>
-            </div>
-            <div class="card-body p-5">
-                <!-- Encabezado del Documento -->
-                <div class="text-center mb-5">
-                    <h3 class="fw-bold text-uppercase">Notificación de Periodo Vacacional</h3>
-                    <p class="text-muted">Fecha de Emisión: {{ object.created_at|date:"d \d\e F \d\e Y" }}</p>
-                </div>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-plane-departure"></i></span>
+            <span>Notificación de Periodo Vacacional</span>
+        </h1>
+        <p class="page-subtitle">Fecha de emisión: {{ object.created_at|date:"d \d\e F \d\e Y" }}</p>
+    </div>
+    {% if object.employee_signature %}
+    <span class="badge-soft badge-soft-success fs-6 px-3 py-2"><i class="fas fa-check-circle"></i> Firmada</span>
+    {% else %}
+    <span class="badge-soft badge-soft-warning fs-6 px-3 py-2"><i class="fas fa-clock"></i> Pendiente de Firma</span>
+    {% endif %}
+</div>
 
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+        <div class="card audit-card-brand">
+            <div class="card-body p-4 p-lg-5">
                 <form method="post" id="vacationForm">
                     {% csrf_token %}
 
-                    <!-- Datos del Colaborador -->
-                    <h5 class="fw-bold mb-3 border-bottom pb-2">1. Datos del Colaborador</h5>
-                    <div class="row mb-3">
+                    <div class="section-divider-title">
+                        <i class="fas fa-user"></i> 1. Datos del Colaborador
+                    </div>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">Nombre Completo</label>
+                            <label class="form-label">Nombre Completo</label>
                             <input type="text" class="form-control fw-bold" value="{{ object.user.get_full_name }}" readonly>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">Documento de Identidad</label>
-                            <input type="text" class="form-control" value="{{ object.user.document_number }}" readonly>
+                            <label class="form-label">Documento de Identidad</label>
+                            <input type="text" class="form-control tabular-nums" value="{{ object.user.document_number }}" readonly>
                         </div>
-                    </div>
-                    
-                    <div class="row mb-4">
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">Cargo</label>
+                            <label class="form-label">Cargo</label>
                             <input type="text" class="form-control" value="{{ object.user.position.name|default:'N/A' }}" readonly>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-bold">Área</label>
+                            <label class="form-label">Área</label>
                             <input type="text" class="form-control" value="{{ object.user.area.name|default:'N/A' }}" readonly>
                         </div>
                     </div>
 
-                    <!-- Datos de Vacaciones -->
-                    <h5 class="fw-bold mb-3 border-bottom pb-2 mt-4">2. Programación del Periodo</h5>
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small fw-bold">Fecha de Inicio (Salida)</label>
-                            <input type="text" class="form-control fw-bold text-primary" value="{{ object.start_date|date:'d/m/Y' }}" readonly>
+                    <div class="section-divider-title mt-4">
+                        <i class="fas fa-calendar-alt"></i> 2. Programación del Periodo
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha de Inicio (Salida)</label>
+                            <input type="text" class="form-control fw-bold tabular-nums" style="color: var(--brand);" value="{{ object.start_date|date:'d/m/Y' }}" readonly>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small fw-bold">Fecha Final</label>
-                            <input type="text" class="form-control fw-bold text-primary" value="{{ object.end_date|date:'d/m/Y' }}" readonly>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha Final</label>
+                            <input type="text" class="form-control fw-bold tabular-nums" style="color: var(--brand);" value="{{ object.end_date|date:'d/m/Y' }}" readonly>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small fw-bold">Fecha de Regreso a Labores</label>
-                            <input type="text" class="form-control fw-bold text-success" value="{{ object.return_date|date:'d/m/Y' }}" readonly>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha de Regreso</label>
+                            <input type="text" class="form-control fw-bold tabular-nums" style="color: var(--success);" value="{{ object.return_date|date:'d/m/Y' }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Días Hábiles</label>
+                            <input type="text" class="form-control fw-bold tabular-nums" value="{{ object.days_enjoyed }} días" readonly>
                         </div>
                     </div>
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small fw-bold">Días Hábiles a Disfrutar</label>
-                            <input type="text" class="form-control fw-bold" value="{{ object.days_enjoyed }} días" readonly>
+
+                    <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+                        <i class="fas fa-info-circle mt-1"></i>
+                        <div>
+                            <strong>Declaración:</strong> Por medio de la presente, se notifica formalmente al colaborador sobre el inicio de su periodo vacacional en las fechas estipuladas. Al firmar este documento, el colaborador confirma haber sido notificado oportunamente.
                         </div>
                     </div>
 
-                    <div class="alert alert-info mt-4">
-                        <strong><i class="fas fa-info-circle"></i> Declaración:</strong> Por medio de la presente, se notifica formalmente al colaborador sobre el inicio de su periodo vacacional en las fechas estipuladas. Al firmar este documento, el colaborador confirma haber sido notificado oportunamente.
+                    <div class="section-divider-title mt-4">
+                        <i class="fas fa-pen-nib"></i> 3. Firmas del Proceso
                     </div>
-
-                    <hr class="my-5">
-
-                    <!-- Lienzo de Firmas -->
-                    <h5 class="fw-bold mb-4">Firmas del Proceso</h5>
-                    <div class="row">
-                        <!-- Firma Jefe / Admin -->
-                        <div class="col-md-6 text-center border-end">
-                            <label class="form-label fw-bold text-muted mb-3">Firma del Empleador</label>
-                            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 8px;">
+                    <div class="row g-4">
+                        <div class="col-md-6 text-center">
+                            <label class="form-label mb-2">Firma del Empleador</label>
+                            <div class="signature-paper-box">
                                 {% if object.manager_signature %}
-                                    <img src="{{ object.manager_signature.url }}" alt="Firma Empleador" style="max-height: 130px; max-width: 100%;">
+                                    <img src="{{ object.manager_signature.url }}" alt="Firma Empleador" style="max-height: 135px; max-width: 100%; object-fit: contain;">
                                 {% else %}
                                     <span class="text-muted small"><i class="fas fa-exclamation-circle"></i> Firma no registrada</span>
                                 {% endif %}
                             </div>
                             <p class="mt-2 mb-0 fw-bold">{{ object.manager_name|default:"Administración" }}</p>
-                            <p class="small text-muted">Jefe / Administrador</p>
+                            <p class="small text-muted mb-0">Jefe / Administrador</p>
                         </div>
 
-                        <!-- Firma Colaborador -->
                         <div class="col-md-6 text-center">
-                            <label class="form-label fw-bold text-muted mb-3">Firma del Colaborador <span class="text-danger">*</span></label>
-                            
+                            <label class="form-label mb-2">Firma del Colaborador <span style="color: var(--danger);">*</span></label>
                             {% if object.employee_signature %}
-                            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 8px;">
-                                <img src="{{ object.employee_signature.url }}" alt="Firma Colaborador" style="max-height: 130px; max-width: 100%;">
+                            <div class="signature-paper-box">
+                                <img src="{{ object.employee_signature.url }}" alt="Firma Colaborador" style="max-height: 135px; max-width: 100%; object-fit: contain;">
                             </div>
-                            <span class="badge bg-success mt-2"><i class="fas fa-check"></i> Notificación Firmada</span>
+                            <div class="mt-2">
+                                <span class="badge-soft badge-soft-success"><i class="fas fa-check"></i> Notificación Firmada</span>
+                            </div>
                             {% else %}
                             <div>
-                                <canvas id="signature-pad" class="signature-pad" width="300" height="150" style="border: 1px solid #00b87c; border-radius: 8px; cursor: crosshair; background: #fff; touch-action: none;"></canvas>
+                                <canvas id="signature-pad" class="signature-canvas" width="320" height="160"></canvas>
                                 <input type="hidden" name="signature_base64" id="signature_base64">
                                 <div class="mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-signature">Limpiar Firma</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-signature">
+                                        <i class="fas fa-eraser"></i> Limpiar Firma
+                                    </button>
                                 </div>
                             </div>
                             {% endif %}
-                            
                             <p class="mt-2 mb-0 fw-bold">{{ object.user.get_full_name }}</p>
-                            <p class="small text-muted">{{ object.user.document_number }}</p>
+                            <p class="small text-muted mb-0">{{ object.user.document_number }}</p>
                         </div>
                     </div>
 
-                    <div class="mt-5 text-end">
-                        <a href="{% url 'vacations_notify_list' %}" class="btn btn-secondary me-2">{% if object.employee_signature %}Volver{% else %}Cancelar{% endif %}</a>
+                    <div class="d-flex justify-content-end gap-2 mt-5 pt-3 border-top">
+                        <a href="{% url 'vacations_notify_list' %}" class="btn btn-outline-secondary">{% if object.employee_signature %}Volver{% else %}Cancelar{% endif %}</a>
                         {% if not object.employee_signature %}
-                        <button type="submit" class="btn btn-success" id="submitBtn">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
                             <i class="fas fa-check-circle"></i> Firmar Notificación
                         </button>
                         {% endif %}
@@ -128,8 +133,7 @@
 </div>
 {% endblock %}
 
-{% block extra_head %}
-<!-- Signature Pad JS -->
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -137,7 +141,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (canvas) {
         const signaturePad = new SignaturePad(canvas, {
             backgroundColor: 'rgb(255, 255, 255)',
-            penColor: 'rgb(0, 0, 0)'
+            penColor: 'rgb(15, 23, 42)'
         });
 
         document.getElementById('clear-signature').addEventListener('click', function () {

@@ -1,44 +1,66 @@
 {% extends 'base.html' %}
 
-{% block title %}Generar Constancia Laboral{% endblock %}
+{% block title %}Constancia Laboral — RRHH{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h2>Generar Constancia Laboral</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-file-contract"></i></span>
+            <span>Generar Constancia Laboral</span>
+        </h1>
+        <p class="page-subtitle">Descarga un certificado laboral oficial en formato PDF al instante.</p>
+    </div>
 </div>
 
 {% if messages %}
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
     {% endfor %}
 {% endif %}
 
-<div class="card shadow-sm" style="max-width: 600px;">
-    <div class="card-body">
-        <form method="post" target="_blank">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-                <label class="form-label fw-bold">Documento de Identidad</label>
-                {% if user.role in 'ADMIN,JEFE' or user.is_superuser %}
-                <input type="text" name="document_number" class="form-control" required placeholder="Digite el documento del colaborador">
-                {% else %}
-                <input type="text" name="document_number" class="form-control" value="{{ user.document_number }}" readonly>
-                {% endif %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <span class="d-flex align-items-center gap-2">
+                    <i class="fas fa-file-pdf" style="color: var(--danger);"></i> Datos del Certificado
+                </span>
             </div>
+            <div class="card-body p-4">
+                <form method="post" target="_blank">
+                    {% csrf_token %}
 
-            <div class="mb-3">
-                <label class="form-label fw-bold">Dirigido a</label>
-                <input type="text" name="directed_to" class="form-control" placeholder="Ej: A quien corresponda" value="A quien corresponda">
+                    <div class="mb-3">
+                        <label class="form-label">Documento de Identidad</label>
+                        {% if user.role in 'ADMIN,JEFE' or user.is_superuser %}
+                        <input type="text" name="document_number" class="form-control" required placeholder="Digite el documento del colaborador">
+                        {% else %}
+                        <input type="text" name="document_number" class="form-control tabular-nums" value="{{ user.document_number }}" readonly>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Dirigido a</label>
+                        <input type="text" name="directed_to" class="form-control" placeholder="Ej: A quien corresponda" value="A quien corresponda">
+                    </div>
+
+                    <div class="mb-4 p-3 rounded-3" style="background: var(--surface-subtle); border: 1px solid var(--border-subtle);">
+                        <div class="form-check m-0">
+                            <input type="checkbox" name="include_salary" id="include_salary" class="form-check-input" checked>
+                            <label class="form-check-label fw-semibold" for="include_salary">Incluir información salarial en la constancia</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-download"></i> Generar y Descargar Constancia
+                    </button>
+                </form>
             </div>
-
-            <div class="mb-3 form-check">
-                <input type="checkbox" name="include_salary" id="include_salary" class="form-check-input" checked>
-                <label class="form-check-label fw-bold" for="include_salary">Incluir información salarial</label>
-            </div>
-
-            <button type="submit" class="btn btn-primary">Generar y Descargar Constancia</button>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}

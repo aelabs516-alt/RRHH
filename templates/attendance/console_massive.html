@@ -1,132 +1,195 @@
 {% extends 'base.html' %}
 
-{% block title %}Marcación Simultánea - Consola Admin{% endblock %}
+{% block title %}Marcación Simultánea — Consola Admin{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h2>Registro Simultáneo (Masivo)</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="page-title-icon"><i class="fas fa-users-cog"></i></span>
+            <span>Registro Simultáneo (Masivo)</span>
+        </h1>
+        <p class="page-subtitle">Gestiona en bloque las marcaciones diarias, justificaciones y evidencias del equipo.</p>
+    </div>
 </div>
 
 {% if messages %}
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
     {% endfor %}
 {% endif %}
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <form method="get" class="d-flex align-items-center gap-3">
-            <label class="fw-bold">Fecha del registro:</label>
-            <input type="date" name="date" class="form-control w-25" value="{{ selected_date }}" required>
-            <button type="submit" class="btn btn-secondary">Cargar Fecha</button>
+<!-- Selector de Fecha -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                <label class="form-label">Fecha del registro</label>
+                <input type="date" name="date" class="form-control" value="{{ selected_date }}" required>
+            </div>
+            <div class="col-12 col-sm-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-calendar-alt"></i> Cargar Fecha
+                </button>
+            </div>
+            <div class="col-12 col-md text-md-end">
+                <span class="badge-soft {% if is_weekday %}badge-soft-brand{% else %}badge-soft-neutral{% endif %}">
+                    <i class="fas fa-utensils"></i>
+                    {% if is_weekday %}L-V: Excluye 1h almuerzo en jornada completa{% else %}Fin de semana: Sin descuento de almuerzo{% endif %}
+                </span>
+            </div>
         </form>
     </div>
 </div>
 
+<!-- Tabla Masiva -->
 <form method="post">
     {% csrf_token %}
     <input type="hidden" name="date" value="{{ selected_date }}">
-    
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover bg-white shadow-sm">
-            <thead class="table-dark">
-                <tr>
-                    <th>Colaborador</th>
-                    <th>Turno del día</th>
-                    <th>Hora Ingreso</th>
-                    <th>Hora Salida</th>
-                    <th>Tipo Permiso</th>
-                    <th>Observaciones</th>
-                    <th>Foto(s)</th>
-                    <th>Horas Calculadas</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for d in user_data %}
-                <tr data-turn-start="{{ d.turn_start }}" data-turn-end="{{ d.turn_end }}">
-                    <td>
-                        {{ d.user.get_full_name }} ({{ d.user.document_number }})
-                        <input type="hidden" name="user_ids" value="{{ d.user.id }}">
-                    </td>
-                    <td>{{ d.turn }}</td>
-                    <td><input type="time" name="entry_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.entry_time|time:'H:i'|default:'' }}"></td>
-                    <td><input type="time" name="exit_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.exit_time|time:'H:i'|default:'' }}"></td>
-                    <td>
-    <div class="mb-1">
-        <small class="d-block text-muted" style="font-size:0.7em;">Ingreso</small>
-        <select name="entry_just_{{ d.user.id }}" class="form-select form-select-sm mb-1" style="font-size:0.75rem; padding: 0.1rem;">
-            <option value="NORMAL" {% if d.attendance.entry_justification == 'NORMAL' %}selected{% endif %}>Normal</option>
-            <option value="TIEMPO_EXTRA" {% if d.attendance.entry_justification == 'TIEMPO_EXTRA' %}selected{% endif %}>Tiempo Extra</option>
-              <optgroup label="Remunerados">
-                <option value="CITA_MEDICA" {% if d.attendance.entry_justification == 'CITA_MEDICA' %}selected{% endif %}>Cita médica</option>
-                <option value="ELECCIONES" {% if d.attendance.entry_justification == 'ELECCIONES' %}selected{% endif %}>Elecciones</option>
-                <option value="CALAMIDAD" {% if d.attendance.entry_justification == 'CALAMIDAD' %}selected{% endif %}>Calamidad</option>
-                <option value="ESCOLAR" {% if d.attendance.entry_justification == 'ESCOLAR' %}selected{% endif %}>Escolares</option>
-                <option value="JUDICIAL" {% if d.attendance.entry_justification == 'JUDICIAL' %}selected{% endif %}>Judicial</option>
-                <option value="LUTO" {% if d.attendance.entry_justification == 'LUTO' %}selected{% endif %}>Luto</option>
-                <option value="ENFERMEDAD" {% if d.attendance.entry_justification == 'ENFERMEDAD' %}selected{% endif %}>Enfermedad</option>
-            </optgroup>
-            <optgroup label="NO Remunerados">
-                <option value="PERSONAL" {% if d.attendance.entry_justification == 'PERSONAL' %}selected{% endif %}>Personal</option>
-                <option value="OTROS" {% if d.attendance.entry_justification == 'OTROS' %}selected{% endif %}>Otros</option>
-            </optgroup>
-        </select>
-    </div>
-    <div>
-        <small class="d-block text-muted" style="font-size:0.7em;">Salida</small>
-        <select name="exit_just_{{ d.user.id }}" class="form-select form-select-sm mb-1" style="font-size:0.75rem; padding: 0.1rem;">
-            <option value="NORMAL" {% if d.attendance.exit_justification == 'NORMAL' %}selected{% endif %}>Normal</option>
-            <option value="TIEMPO_EXTRA" {% if d.attendance.exit_justification == 'TIEMPO_EXTRA' %}selected{% endif %}>Tiempo Extra</option>
-              <optgroup label="Remunerados">
-                <option value="CITA_MEDICA" {% if d.attendance.exit_justification == 'CITA_MEDICA' %}selected{% endif %}>Cita médica</option>
-                <option value="ELECCIONES" {% if d.attendance.exit_justification == 'ELECCIONES' %}selected{% endif %}>Elecciones</option>
-                <option value="CALAMIDAD" {% if d.attendance.exit_justification == 'CALAMIDAD' %}selected{% endif %}>Calamidad</option>
-                <option value="ESCOLAR" {% if d.attendance.exit_justification == 'ESCOLAR' %}selected{% endif %}>Escolares</option>
-                <option value="JUDICIAL" {% if d.attendance.exit_justification == 'JUDICIAL' %}selected{% endif %}>Judicial</option>
-                <option value="LUTO" {% if d.attendance.exit_justification == 'LUTO' %}selected{% endif %}>Luto</option>
-                <option value="ENFERMEDAD" {% if d.attendance.exit_justification == 'ENFERMEDAD' %}selected{% endif %}>Enfermedad</option>
-            </optgroup>
-            <optgroup label="NO Remunerados">
-                <option value="PERSONAL" {% if d.attendance.exit_justification == 'PERSONAL' %}selected{% endif %}>Personal</option>
-                <option value="OTROS" {% if d.attendance.exit_justification == 'OTROS' %}selected{% endif %}>Otros</option>
-            </optgroup>
-        </select>
-    </div>
-</td>
-<td>
-    <div class="mb-1">
-        <small class="d-block text-muted" style="font-size:0.7em;">Obs. Ingreso</small>
-        <input type="text" name="entry_obs_{{ d.user.id }}" class="form-control form-control-sm mb-1" style="font-size:0.75rem; padding: 0.1rem;" placeholder="Obs." value="{{ d.attendance.entry_observations|default:'' }}">
-    </div>
-    <div>
-        <small class="d-block text-muted" style="font-size:0.7em;">Obs. Salida</small>
-        <input type="text" name="exit_obs_{{ d.user.id }}" class="form-control form-control-sm mb-1" style="font-size:0.75rem; padding: 0.1rem;" placeholder="Obs." value="{{ d.attendance.exit_observations|default:'' }}">
-    </div>
-</td>
-                    <td class="text-center align-middle">
-                        {% if d.attendance.entry_photo %}
-                            <a href="{{ d.attendance.entry_photo.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver foto de ingreso">📥</a>
-                        {% endif %}
-                        {% if d.attendance.exit_photo %}
-                            <a href="{{ d.attendance.exit_photo.url }}" target="_blank" class="btn btn-sm btn-outline-warning mt-1" title="Ver foto de salida">📤</a>
-                        {% endif %}
-                    </td>
-                    <td class="calculated-hours-cell text-center align-middle" id="hr_{{ d.user.id }}">
-                        <span class="fw-bold">{{ d.attendance.hours_worked|default:'0' }} h</span>
-                        {% if d.attendance %}
-                        <a href="{% url 'attendance:delete_attendance' d.attendance.id %}" class="btn btn-sm btn-outline-danger ms-2" title="Eliminar este registro" onclick="return confirm('¿Estás seguro de eliminar la marcación de {{ d.user.first_name }}?')">
-                            <i class="fas fa-trash"></i>
-                        </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <button type="submit" class="btn btn-primary btn-lg mt-3">Guardar Registros Masivos</button>
-</form>
 
+    <div class="card mb-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-compact align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 190px;">Colaborador</th>
+                            <th>Turno del día</th>
+                            <th style="min-width: 118px;">Hora Ingreso</th>
+                            <th style="min-width: 118px;">Hora Salida</th>
+                            <th style="min-width: 165px;">Tipo Permiso</th>
+                            <th style="min-width: 160px;">Observaciones</th>
+                            <th class="text-center">Foto(s)</th>
+                            <th class="text-center" style="min-width: 120px;">Horas Calculadas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in user_data %}
+                        <tr data-turn-start="{{ d.turn_start }}" data-turn-end="{{ d.turn_end }}">
+                            <td>
+                                <div class="fw-semibold">{{ d.user.get_full_name }}</div>
+                                <div class="small text-muted tabular-nums">{{ d.user.document_number }}</div>
+                                <input type="hidden" name="user_ids" value="{{ d.user.id }}">
+                            </td>
+                            <td>
+                                <span class="badge-soft {% if d.turn != 'Sin Turno' %}badge-soft-info{% else %}badge-soft-neutral{% endif %}">
+                                    {{ d.turn }}
+                                </span>
+                            </td>
+                            <td>
+                                <input type="time" name="entry_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.entry_time|time:'H:i'|default:'' }}">
+                            </td>
+                            <td>
+                                <input type="time" name="exit_{{ d.user.id }}" class="form-control form-control-sm" value="{{ d.attendance.exit_time|time:'H:i'|default:'' }}">
+                            </td>
+                            <td>
+                                <div class="mb-1">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Ingreso</small>
+                                    <select name="entry_just_{{ d.user.id }}" class="form-select form-select-sm">
+                                        <option value="NORMAL" {% if d.attendance.entry_justification == 'NORMAL' %}selected{% endif %}>Normal</option>
+                                        <option value="TIEMPO_EXTRA" {% if d.attendance.entry_justification == 'TIEMPO_EXTRA' %}selected{% endif %}>Tiempo Extra</option>
+                                        <optgroup label="Remunerados">
+                                            <option value="CITA_MEDICA" {% if d.attendance.entry_justification == 'CITA_MEDICA' %}selected{% endif %}>Cita médica</option>
+                                            <option value="ELECCIONES" {% if d.attendance.entry_justification == 'ELECCIONES' %}selected{% endif %}>Elecciones</option>
+                                            <option value="CALAMIDAD" {% if d.attendance.entry_justification == 'CALAMIDAD' %}selected{% endif %}>Calamidad</option>
+                                            <option value="ESCOLAR" {% if d.attendance.entry_justification == 'ESCOLAR' %}selected{% endif %}>Escolares</option>
+                                            <option value="JUDICIAL" {% if d.attendance.entry_justification == 'JUDICIAL' %}selected{% endif %}>Judicial</option>
+                                            <option value="LUTO" {% if d.attendance.entry_justification == 'LUTO' %}selected{% endif %}>Luto</option>
+                                            <option value="ENFERMEDAD" {% if d.attendance.entry_justification == 'ENFERMEDAD' %}selected{% endif %}>Enfermedad</option>
+                                        </optgroup>
+                                        <optgroup label="NO Remunerados">
+                                            <option value="PERSONAL" {% if d.attendance.entry_justification == 'PERSONAL' %}selected{% endif %}>Personal</option>
+                                            <option value="OTROS" {% if d.attendance.entry_justification == 'OTROS' %}selected{% endif %}>Otros</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div>
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Salida</small>
+                                    <select name="exit_just_{{ d.user.id }}" class="form-select form-select-sm">
+                                        <option value="NORMAL" {% if d.attendance.exit_justification == 'NORMAL' %}selected{% endif %}>Normal</option>
+                                        <option value="TIEMPO_EXTRA" {% if d.attendance.exit_justification == 'TIEMPO_EXTRA' %}selected{% endif %}>Tiempo Extra</option>
+                                        <optgroup label="Remunerados">
+                                            <option value="CITA_MEDICA" {% if d.attendance.exit_justification == 'CITA_MEDICA' %}selected{% endif %}>Cita médica</option>
+                                            <option value="ELECCIONES" {% if d.attendance.exit_justification == 'ELECCIONES' %}selected{% endif %}>Elecciones</option>
+                                            <option value="CALAMIDAD" {% if d.attendance.exit_justification == 'CALAMIDAD' %}selected{% endif %}>Calamidad</option>
+                                            <option value="ESCOLAR" {% if d.attendance.exit_justification == 'ESCOLAR' %}selected{% endif %}>Escolares</option>
+                                            <option value="JUDICIAL" {% if d.attendance.exit_justification == 'JUDICIAL' %}selected{% endif %}>Judicial</option>
+                                            <option value="LUTO" {% if d.attendance.exit_justification == 'LUTO' %}selected{% endif %}>Luto</option>
+                                            <option value="ENFERMEDAD" {% if d.attendance.exit_justification == 'ENFERMEDAD' %}selected{% endif %}>Enfermedad</option>
+                                        </optgroup>
+                                        <optgroup label="NO Remunerados">
+                                            <option value="PERSONAL" {% if d.attendance.exit_justification == 'PERSONAL' %}selected{% endif %}>Personal</option>
+                                            <option value="OTROS" {% if d.attendance.exit_justification == 'OTROS' %}selected{% endif %}>Otros</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="mb-1">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Obs. Ingreso</small>
+                                    <input type="text" name="entry_obs_{{ d.user.id }}" class="form-control form-control-sm" placeholder="Obs." value="{{ d.attendance.entry_observations|default:'' }}">
+                                </div>
+                                <div>
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Obs. Salida</small>
+                                    <input type="text" name="exit_obs_{{ d.user.id }}" class="form-control form-control-sm" placeholder="Obs." value="{{ d.attendance.exit_observations|default:'' }}">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="d-inline-flex flex-column gap-1">
+                                    {% if d.attendance.entry_photo %}
+                                    <a href="{{ d.attendance.entry_photo.url }}" target="_blank" class="btn btn-sm btn-soft-info" title="Ver foto de ingreso">
+                                        <i class="fas fa-sign-in-alt"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if d.attendance.exit_photo %}
+                                    <a href="{{ d.attendance.exit_photo.url }}" target="_blank" class="btn btn-sm btn-soft-brand" title="Ver foto de salida">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if not d.attendance.entry_photo and not d.attendance.exit_photo %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="calculated-hours-cell text-center" id="hr_{{ d.user.id }}">
+                                <div class="d-inline-flex align-items-center gap-2">
+                                    <span class="fw-bold tabular-nums">{{ d.attendance.hours_worked|default:'0' }} h</span>
+                                    {% if d.attendance %}
+                                    <a href="{% url 'attendance:delete_attendance' d.attendance.id %}" class="btn btn-sm btn-soft-danger" title="Eliminar este registro" onclick="return confirm('¿Estás seguro de eliminar la marcación de {{ d.user.first_name }}?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon"><i class="fas fa-users"></i></div>
+                                    <p class="mb-0 small">No hay colaboradores activos registrados.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save"></i> Guardar Registros Masivos
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const isWeekday = {{ is_weekday|yesno:"true,false" }};
@@ -174,6 +237,7 @@
             const entryInput = row.querySelector('input[name^="entry_"]');
             const exitInput = row.querySelector('input[name^="exit_"]');
             const hrDisplay = row.querySelector('td.calculated-hours-cell');
+            if (!entryInput || !exitInput || !hrDisplay) return;
             const turnStartVal = row.dataset.turnStart || '';
             const turnEndVal = row.dataset.turnEnd || '';
 
@@ -184,9 +248,9 @@
                 if (entryInput.value && exitInput.value) {
                     const diff = calcEffectiveHours(entryInput.value, exitInput.value, turnStartVal, turnEndVal);
                     span.innerText = diff.toFixed(2) + " h";
-                    span.classList.add('text-success');
+                    span.style.color = 'var(--brand)';
                 } else {
-                    span.classList.remove('text-success');
+                    span.style.color = '';
                 }
             }
 

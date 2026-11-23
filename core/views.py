@@ -26,6 +26,44 @@ def get_holidays_api(request):
             
     return JsonResponse({'holidays': holiday_dates})
 
+
+def get_permission_hours_api(request):
+    """Calcula las horas laborales efectivas de un rango de permiso para el colaborador seleccionado."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'No autenticado'}, status=401)
+
+    from datetime import datetime
+    from apps.attendance.services import calculate_permission_working_hours
+
+    start_str = request.GET.get('start_date', '').strip()
+    end_str = request.GET.get('end_date', '').strip()
+    user_id = request.GET.get('user_id', '').strip()
+
+    if not start_str or not end_str:
+        return JsonResponse({'hours': 0})
+
+    def parse_dt(val):
+        for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'):
+            try:
+                return datetime.strptime(val, fmt)
+            except ValueError:
+                continue
+        return None
+
+    start_dt = parse_dt(start_str)
+    end_dt = parse_dt(end_str)
+    if not start_dt or not end_dt or end_dt <= start_dt:
+        return JsonResponse({'hours': 0})
+
+    is_admin = request.user.role in ['ADMIN', 'JEFE'] or request.user.is_superuser
+    if is_admin and user_id:
+        target_user = User.objects.filter(id=user_id).first() or request.user
+    else:
+        target_user = request.user
+
+    hours = calculate_permission_working_hours(target_user, start_dt, end_dt)
+    return JsonResponse({'hours': hours})
+
 # -- ÁREAS --
 class AreaListView(LoginRequiredMixin, ListView):
     model = Area
@@ -168,7 +206,7 @@ class PermissionListView(LoginRequiredMixin, ListView):
         
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['title'], ctx['headers'] = 'Permisos y Vacaciones', ['Documento', 'Colaborador', 'Categoría', 'F. Inicio', 'F. Fin', 'Estado']
+        ctx['title'], ctx['headers'] = 'Permisos y Vacaciones', ['Documento', 'Colaborador', 'Categoría', 'F. Inicio', 'F. Fin', 'Duración', 'Estado']
         ctx['create_url'] = 'permissions_create'
         ctx['pdf_url_name'] = 'permission_pdf'
         

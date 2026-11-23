@@ -66,6 +66,7 @@ urlpatterns = [
     path('payroll/<int:pk>/update/', core_views.PayrollUpdateView.as_view(), name='payroll_update'),
     
     path('api/holidays/', core_views.get_holidays_api, name='api_holidays'),
+    path('api/permission-hours/', core_views.get_permission_hours_api, name='api_permission_hours'),
     
     # Marcación de Asistencia
     path('attendance/', include('apps.attendance.urls')),

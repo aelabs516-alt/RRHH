@@ -43,7 +43,7 @@
             </thead>
             <tbody>
                 {% for d in user_data %}
-                <tr>
+                <tr data-turn-start="{{ d.turn_start }}" data-turn-end="{{ d.turn_end }}">
                     <td>
                         {{ d.user.get_full_name }} ({{ d.user.document_number }})
                         <input type="hidden" name="user_ids" value="{{ d.user.id }}">
@@ -129,27 +129,67 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const isWeekday = {{ is_weekday|yesno:"true,false" }};
+
+        function toMinutes(hhmm) {
+            const parts = hhmm.split(':');
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+
+        function calcEffectiveHours(entryVal, exitVal, turnStartVal, turnEndVal) {
+            let startMin = toMinutes(entryVal);
+            let endMin = toMinutes(exitVal);
+            let hasTurn = Boolean(turnStartVal && turnEndVal);
+            let tStart = hasTurn ? toMinutes(turnStartVal) : null;
+            let tEnd = hasTurn ? toMinutes(turnEndVal) : null;
+
+            if (hasTurn && tEnd < tStart) {
+                tEnd += 1440;
+                if (endMin < startMin) endMin += 1440;
+            } else if (!hasTurn && endMin < startMin) {
+                endMin += 1440;
+            }
+
+            if (endMin <= startMin) return 0;
+            let workedMin = endMin - startMin;
+
+            if (isWeekday) {
+                if (hasTurn && (tEnd - tStart) > 300) {
+                    const mid = (tStart + tEnd) / 2;
+                    const lunchStart = mid - 30;
+                    const lunchEnd = mid + 30;
+                    const ovStart = Math.max(startMin, lunchStart);
+                    const ovEnd = Math.min(endMin, lunchEnd);
+                    if (ovEnd > ovStart) {
+                        workedMin -= (ovEnd - ovStart);
+                    }
+                } else if (!hasTurn && workedMin > 300) {
+                    workedMin -= 60;
+                }
+            }
+            return Math.max(0, workedMin) / 60;
+        }
+
         document.querySelectorAll('tbody tr').forEach(row => {
             const entryInput = row.querySelector('input[name^="entry_"]');
             const exitInput = row.querySelector('input[name^="exit_"]');
             const hrDisplay = row.querySelector('td.calculated-hours-cell');
-            
+            const turnStartVal = row.dataset.turnStart || '';
+            const turnEndVal = row.dataset.turnEnd || '';
+
             function calcHours() {
                 let span = hrDisplay.querySelector('span.fw-bold');
                 if (!span) return;
-                
+
                 if (entryInput.value && exitInput.value) {
-                    const start = new Date("1970-01-01T" + entryInput.value + ":00");
-                    const end = new Date("1970-01-01T" + exitInput.value + ":00");
-                    let diff = (end - start) / (1000 * 60 * 60);
-                    if (diff < 0) diff += 24;
+                    const diff = calcEffectiveHours(entryInput.value, exitInput.value, turnStartVal, turnEndVal);
                     span.innerText = diff.toFixed(2) + " h";
                     span.classList.add('text-success');
                 } else {
                     span.classList.remove('text-success');
                 }
             }
-            
+
             entryInput.addEventListener('change', calcHours);
             exitInput.addEventListener('change', calcHours);
         });

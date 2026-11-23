@@ -102,5 +102,34 @@ class Permission(models.Model):
     def __str__(self):
         return f"{self.user} - {self.get_category_display()} ({self.status})"
 
+    def get_working_hours(self, filter_start_date=None, filter_end_date=None, holidays_set=None):
+        from apps.attendance.services import calculate_permission_working_hours
+        return calculate_permission_working_hours(
+            self.user,
+            self.start_date,
+            self.end_date,
+            filter_start_date=filter_start_date,
+            filter_end_date=filter_end_date,
+            holidays_set=holidays_set,
+        )
+
     def get_row_values(self):
-        return [self.user.document_number, self.user.get_full_name(), self.get_category_display(), self.start_date.strftime('%d/%m/%Y'), self.end_date.strftime('%d/%m/%Y'), self.status]
+        start_local = timezone.localtime(self.start_date) if timezone.is_aware(self.start_date) else self.start_date
+        end_local = timezone.localtime(self.end_date) if timezone.is_aware(self.end_date) else self.end_date
+        if self.category == PermissionCategory.VACACIONES:
+            duration_str = f"{self.days_requested} días" if self.days_requested is not None else "-"
+            start_str = start_local.strftime('%d/%m/%Y')
+            end_str = end_local.strftime('%d/%m/%Y')
+        else:
+            duration_str = f"{self.get_working_hours()} h"
+            start_str = start_local.strftime('%d/%m/%Y %H:%M')
+            end_str = end_local.strftime('%d/%m/%Y %H:%M')
+        return [
+            self.user.document_number,
+            self.user.get_full_name(),
+            self.get_category_display(),
+            start_str,
+            end_str,
+            duration_str,
+            self.status,
+        ]

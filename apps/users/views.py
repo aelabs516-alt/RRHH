@@ -40,18 +40,25 @@ class CustomLoginView(LoginView):
         return url or reverse_lazy('dashboard')
 
 from django.utils import timezone
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
+import calendar
 from django.db.models import Sum, Count, Q, F
 from django.shortcuts import redirect
 from apps.attendance.models import Attendance, Permission, AttendanceStatus
+from apps.attendance.services import (
+    calculate_permission_working_hours,
+    get_colombian_holidays,
+    get_current_turn,
+)
 from apps.hr.models import DisciplinaryAct
 
 @login_required
 def dashboard(request):
     user = request.user
+    is_admin = user.role in ['ADMIN', 'JEFE'] or user.is_superuser
     
     # Check for pending acts and vacations on dashboard entry for collaborators
-    if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
+    if not is_admin:
         has_pending_acts = DisciplinaryAct.objects.filter(
             Q(employee_signature='') | Q(employee_signature__isnull=True),
             user=user
@@ -75,172 +82,177 @@ def dashboard(request):
     year = request.GET.get('year')
     month = request.GET.get('month')
     day = request.GET.get('day')
-    collab_id = request.GET.get('user_id')
+    collab_id = request.GET.get('user_id') if is_admin else str(user.id)
     
-    now = timezone.now()
+    today_local = timezone.localdate()
+    
+    from apps.users.models import User
     
     # Base queries
     att_qs = Attendance.objects.all()
     acts_qs = DisciplinaryAct.objects.all()
+    perm_qs = Permission.objects.filter(status='APROBADO', category__in=['PERSONALES', 'OTROS'])
     
-    # No admins solo ven lo suyo
-    if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
-        collab_id = user.id
+    # Colaboradores visibles según perfil: no admins ven ÚNICAMENTE su propia sesión
+    if not is_admin:
+        collabs = User.objects.filter(id=user.id)
         att_qs = att_qs.filter(user=user)
         acts_qs = acts_qs.filter(user=user)
-        
-    if year:
-        att_qs = att_qs.filter(date__year=year)
-        acts_qs = acts_qs.filter(date_created__year=year)
-    if month:
-        att_qs = att_qs.filter(date__month=month)
-        acts_qs = acts_qs.filter(date_created__month=month)
-    if day:
-        att_qs = att_qs.filter(date__day=day)
-        acts_qs = acts_qs.filter(date_created__day=day)
-    if collab_id:
-        att_qs = att_qs.filter(user_id=collab_id)
-        acts_qs = acts_qs.filter(user_id=collab_id)
-        
-    # KPIs
-    total_extras = att_qs.aggregate(Sum('extra_hours'))['extra_hours__sum'] or 0
-    total_permisos = 0 # Necesitamos calcular horas de permiso. Podemos calcular (salida_oficial - exit_time) si salió temprano, pero Attendance no guarda 'permission_hours' explícitamente en base, aunque sí tenemos permisos aprobados.
-    # En attendance, si sale temprano lo marcamos con extra_hours=0 y observations=motivo, pero no sumamos. 
-    # Para hacerlo dinámico, asumimos que total_permisos viene de la diferencia de horas_trabajadas vs turno. 
-    # O calculamos los permisos aprobados del modelo Permission.
-    perm_qs = Permission.objects.filter(status='APROBADO')
-    if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
         perm_qs = perm_qs.filter(user=user)
-    if year: perm_qs = perm_qs.filter(start_date__year=year)
-    if month: perm_qs = perm_qs.filter(start_date__month=month)
-    if collab_id: perm_qs = perm_qs.filter(user_id=collab_id)
+    else:
+        collabs = User.objects.filter(is_active=True)
+        if collab_id:
+            collabs = collabs.filter(id=collab_id)
+            att_qs = att_qs.filter(user_id=collab_id)
+            acts_qs = acts_qs.filter(user_id=collab_id)
+            perm_qs = perm_qs.filter(user_id=collab_id)
     
-    # Calculo simple de horas por permisos aprobados (SOLO NO Remunerados)
-    for p in perm_qs.filter(category__in=['PERSONALES', 'OTROS']):
-        diff = p.end_date - p.start_date
-        total_permisos += diff.total_seconds() / 3600.0
-        
-    # Añadir horas de salidas tempranas registradas en asistencia
-    early_departures = att_qs.aggregate(Sum('permission_hours'))['permission_hours__sum'] or 0
-    total_permisos += float(early_departures)
+    # Filtros de fecha (soportando input type="date" YYYY-MM-DD y año/mes)
+    filter_start_date = None
+    filter_end_date = None
+    target_date = today_local
+    
+    if day:
+        if '-' in day:
+            try:
+                specific_date = datetime.strptime(day, '%Y-%m-%d').date()
+                att_qs = att_qs.filter(date=specific_date)
+                acts_qs = acts_qs.filter(date_created__date=specific_date)
+                filter_start_date = specific_date
+                filter_end_date = specific_date
+                target_date = specific_date
+            except ValueError:
+                pass
+        else:
+            try:
+                day_int = int(day)
+                att_qs = att_qs.filter(date__day=day_int)
+                acts_qs = acts_qs.filter(date_created__day=day_int)
+                if year and month:
+                    specific_date = date(int(year), int(month), day_int)
+                    filter_start_date = specific_date
+                    filter_end_date = specific_date
+                    target_date = specific_date
+            except ValueError:
+                pass
+    else:
+        year_int = None
+        month_int = None
+        if year:
+            try:
+                year_int = int(year)
+                att_qs = att_qs.filter(date__year=year_int)
+                acts_qs = acts_qs.filter(date_created__year=year_int)
+            except ValueError:
+                year_int = None
+        if month:
+            try:
+                month_int = int(month)
+                att_qs = att_qs.filter(date__month=month_int)
+                acts_qs = acts_qs.filter(date_created__month=month_int)
+            except ValueError:
+                month_int = None
 
-    llegadas_tarde = att_qs.filter(entry_status=AttendanceStatus.RETARDO).count()
-    
+        if year_int and month_int:
+            last_day_num = calendar.monthrange(year_int, month_int)[1]
+            filter_start_date = date(year_int, month_int, 1)
+            filter_end_date = date(year_int, month_int, last_day_num)
+        elif year_int:
+            filter_start_date = date(year_int, 1, 1)
+            filter_end_date = date(year_int, 12, 31)
+        elif month_int:
+            perm_qs = perm_qs.filter(Q(start_date__month=month_int) | Q(end_date__month=month_int))
+
+    if filter_start_date and filter_end_date:
+        f_start_dt = timezone.make_aware(datetime.combine(filter_start_date, datetime.min.time()))
+        f_end_dt = timezone.make_aware(datetime.combine(filter_end_date + timedelta(days=1), datetime.min.time()))
+        perm_qs = perm_qs.filter(start_date__lt=f_end_dt, end_date__gt=f_start_dt)
+
+    # Pre-cargar festivos colombianos + personalizados para evitar recálculo en bucle
+    holiday_years = set(range(today_local.year - 2, today_local.year + 2))
+    for p_dates in perm_qs.values_list('start_date', 'end_date'):
+        if p_dates[0]:
+            holiday_years.add(p_dates[0].year)
+        if p_dates[1]:
+            holiday_years.add(p_dates[1].year)
+    colombian_holidays_set = get_colombian_holidays(holiday_years)
+
+    # Actas KPIs
     actas_firmadas = acts_qs.exclude(Q(employee_signature='') | Q(employee_signature__isnull=True)).count()
     actas_pendientes = acts_qs.filter(Q(employee_signature='') | Q(employee_signature__isnull=True)).count()
-    
-    # Gráficos
-    # 1. Horas extras acumuladas por colaborador
-    extras_por_colab = list(att_qs.filter(Q(extra_hours__gt=0) | Q(permission_hours__gt=0)).values('user__first_name', 'user__last_name').annotate(total=Sum('extra_hours') - Sum('permission_hours')).order_by('-total')[:10])
-    
-    # 2. Vacaciones acumuladas por colaborador (Ley Colombiana: 15 días hábiles por cada año laborado - 360 días)
-    from apps.users.models import User
-    from apps.organization.models import CustomHoliday
-    collabs = User.objects.filter(is_active=True)
-    if user.role not in ['ADMIN', 'JEFE'] and not user.is_superuser:
-        collabs = collabs.filter(id=user.id)
-        
-    colombian_holidays = list(CustomHoliday.objects.values_list('date', flat=True))
-    vacaciones_por_colab = []
-    
-    for c in collabs:
-        if c.hire_date:
-            # Fórmula Laboral Colombiana Comercial: (Días Trabajados * 15) / 360
-            days_worked = (now.date() - c.hire_date).days
-            earned_vacation = (days_worked * 15) / 360.0
-            
-            used_working_days = 0
-            # Contar SOLO días hábiles usados en vacaciones (descontando domingos y festivos)
-            vacs = Permission.objects.filter(user=c, category='VACACIONES', status='APROBADO')
-            for v in vacs:
-                current_date = v.start_date.date()
-                end_d = v.end_date.date()
-                while current_date <= end_d:
-                    if current_date.weekday() != 6 and current_date not in colombian_holidays:
-                        used_working_days += 1
-                    current_date += timedelta(days=1)
-                    
-            # Tambien descontar los dias de Notificaciones de Vacaciones firmadas
-            from apps.hr.models import VacationNotification
-            vac_notifs = VacationNotification.objects.filter(user=c).exclude(Q(employee_signature='') | Q(employee_signature__isnull=True))
-            for vn in vac_notifs:
-                used_working_days += vn.days_enjoyed
-            
-            balance = max(0, round(earned_vacation - used_working_days, 1))
-            vacaciones_por_colab.append({'name': c.get_full_name(), 'balance': balance})
-    
-    # Ordenar por balance
-    vacaciones_por_colab = sorted(vacaciones_por_colab, key=lambda x: x['balance'], reverse=True)[:10]
 
-    # Panel de Auditoría: Retardos pendientes por generar acta
-    critical_tardies = []
-    
-    # 30 days rolling window logic
-    thirty_days_ago = timezone.now().date() - timedelta(days=30)
-    
-    # Obtener usuarios que tienen al menos un retardo en los ultimos 30 dias
-    users_with_tardies = User.objects.filter(
-        attendances__entry_status=AttendanceStatus.RETARDO,
-        attendances__date__gte=thirty_days_ago
-    ).distinct()
-    
-    for u in users_with_tardies:
-        # Buscar el acta más reciente de este usuario
-        latest_act = DisciplinaryAct.objects.filter(user=u).order_by('-date_created').first()
-        
-        # Filtrar solo los últimos 30 días
-        tardies_qs = Attendance.objects.filter(
-            user=u, 
-            entry_status=AttendanceStatus.RETARDO,
-            date__gte=thirty_days_ago
-        )
-        
-        if latest_act:
-            # Contar los retardos DESPUÉS de la fecha/hora exacta del último acta y dentro de los últimos 30 días
-            tardies_count = tardies_qs.filter(
-                Q(entry_time__gt=latest_act.date_created) |
-                Q(entry_time__isnull=True, date__gt=latest_act.date_created.date())
-            ).count()
-        else:
-            tardies_count = tardies_qs.count()
-            
-        # Mostrar progreso hacia la falta (incluso si es 1 o 2)
-        if tardies_count > 0:
-            critical_tardies.append({
-                'user__first_name': u.first_name,
-                'user__last_name': u.last_name,
-                'user__document_number': u.document_number,
-                'count': tardies_count
-            })
-            
-    # Ordenar de mayor a menor cantidad de retardos pendientes
-    critical_tardies.sort(key=lambda x: x['count'], reverse=True)
-    
-    # Alerta de Geolocalización: Marcaciones fuera de la empresa (Hoy)
-    out_of_bounds_alerts = Attendance.objects.filter(
-        date=now.date(), is_out_of_bounds=True
-    ).select_related('user')
-    
-    # Consolidado Neto (Tabla)
+    # Consolidado Neto, KPIs Netos (Extras y Permisos) y Gráfica de Balance Neto
+    # Fuente única de verdad: calcula por colaborador (Extras - Permisos en horario laboral sin almuerzo)
     net_table = []
+    extras_por_colab = []
+    net_total_extras = 0.0
+    net_total_permisos = 0.0
+
     for c in collabs:
         c_att = att_qs.filter(user=c)
-        c_extras = c_att.aggregate(Sum('extra_hours'))['extra_hours__sum'] or 0
-        
-        c_perms = 0
-        c_pqs = perm_qs.filter(user=c, category__in=['PERSONALES', 'OTROS'])
+        c_extras = float(c_att.aggregate(Sum('extra_hours'))['extra_hours__sum'] or 0)
+
+        c_perms = 0.0
+        perm_details = []
+        c_pqs = perm_qs.filter(user=c).order_by('-start_date')
         for p in c_pqs:
-            c_perms += (p.end_date - p.start_date).total_seconds() / 3600.0
-            
-        c_early = c_att.aggregate(Sum('permission_hours'))['permission_hours__sum'] or 0
-        c_perms += float(c_early)
-            
-        balance = float(c_extras) - c_perms
+            p_hours = calculate_permission_working_hours(
+                c,
+                p.start_date,
+                p.end_date,
+                filter_start_date=filter_start_date,
+                filter_end_date=filter_end_date,
+                holidays_set=colombian_holidays_set,
+            )
+            c_perms += p_hours
+            if p_hours > 0:
+                p_start_loc = timezone.localtime(p.start_date)
+                p_end_loc = timezone.localtime(p.end_date)
+                date_label = (
+                    p_start_loc.strftime('%Y-%m-%d')
+                    if p_start_loc.date() == p_end_loc.date()
+                    else f"{p_start_loc.strftime('%Y-%m-%d')} a {p_end_loc.strftime('%Y-%m-%d')}"
+                )
+                perm_details.append({
+                    'date': date_label,
+                    'status': p.get_category_display(),
+                    'extra': 0,
+                    'permission': round(p_hours, 2),
+                    'entry': p_start_loc.strftime('%H:%M'),
+                    'exit': p_end_loc.strftime('%H:%M'),
+                })
+
+        c_early = float(c_att.aggregate(Sum('permission_hours'))['permission_hours__sum'] or 0)
+        c_perms += c_early
+
+        balance = round(c_extras - c_perms, 2)
         state = 'A favor' if balance > 0 else ('En contra' if balance < 0 else 'Al día')
-        
+
+        # Acumular balance neto para tarjetas KPI
+        if balance > 0:
+            net_total_extras += balance
+        elif balance < 0:
+            net_total_permisos += abs(balance)
+
+        # Gráfica de Balance Neto:
+        # - Colaborador (o admin filtrando 1 colaborador): siempre muestra únicamente esa sesión/persona
+        # - Admin viendo todos: muestra el acumulado neto de los colaboradores con saldo neto != 0
+        if (not is_admin) or collab_id:
+            extras_por_colab.append({
+                'user__first_name': c.first_name,
+                'user__last_name': c.last_name,
+                'total': round(balance, 1),
+            })
+        elif round(balance, 1) != 0:
+            extras_por_colab.append({
+                'user__first_name': c.first_name,
+                'user__last_name': c.last_name,
+                'total': round(balance, 1),
+            })
+
         matrix = c.turns.last()
         turn_str = "Matriz Asignada" if matrix else "Sin Turno"
-        
+
         details = []
         for att in c_att.filter(Q(extra_hours__gt=0) | Q(permission_hours__gt=0) | Q(entry_status='RETARDO')).order_by('-date'):
             details.append({
@@ -251,7 +263,8 @@ def dashboard(request):
                 'entry': timezone.localtime(att.entry_time).strftime('%H:%M') if att.entry_time else '-',
                 'exit': timezone.localtime(att.exit_time).strftime('%H:%M') if att.exit_time else '-'
             })
-            
+        details.extend(perm_details)
+
         net_table.append({
             'doc': c.document_number,
             'name': c.get_full_name(),
@@ -263,33 +276,110 @@ def dashboard(request):
             'details': details
         })
 
-    # Cacular ausencias (Faltas o no llegadas) para la fecha seleccionada o hoy
-    from apps.attendance.services import get_current_turn
-    target_date = date(int(year), int(month), int(day)) if (year and month and day) else now.date()
+    extras_por_colab = sorted(extras_por_colab, key=lambda x: x['total'], reverse=True)[:15]
+
+    # 2. Vacaciones acumuladas por colaborador (Ley Colombiana: 15 días hábiles por cada año laborado - 360 días)
+    vacaciones_por_colab = []
+    for c in collabs:
+        if c.hire_date:
+            # Fórmula Laboral Colombiana Comercial: (Días Trabajados * 15) / 360
+            days_worked = (today_local - c.hire_date).days
+            earned_vacation = (days_worked * 15) / 360.0
+
+            used_working_days = 0
+            # Contar SOLO días hábiles usados en vacaciones (descontando domingos y festivos)
+            vacs = Permission.objects.filter(user=c, category='VACACIONES', status='APROBADO')
+            for v in vacs:
+                current_date = timezone.localtime(v.start_date).date()
+                end_d = timezone.localtime(v.end_date).date()
+                while current_date <= end_d:
+                    if current_date.weekday() != 6 and current_date not in colombian_holidays_set:
+                        used_working_days += 1
+                    current_date += timedelta(days=1)
+
+            # También descontar los días de Notificaciones de Vacaciones firmadas
+            from apps.hr.models import VacationNotification
+            vac_notifs = VacationNotification.objects.filter(user=c).exclude(Q(employee_signature='') | Q(employee_signature__isnull=True))
+            for vn in vac_notifs:
+                used_working_days += vn.days_enjoyed
+
+            balance_vac = max(0, round(earned_vacation - used_working_days, 1))
+            vacaciones_por_colab.append({'name': c.get_full_name(), 'balance': balance_vac})
+
+    vacaciones_por_colab = sorted(vacaciones_por_colab, key=lambda x: x['balance'], reverse=True)[:10]
+
+    # Panel de Auditoría: Retardos pendientes por generar acta (ventana móvil de 30 días calendario)
+    critical_tardies = []
+    thirty_days_ago = today_local - timedelta(days=30)
+
+    users_with_tardies = collabs.filter(
+        attendances__entry_status=AttendanceStatus.RETARDO,
+        attendances__date__gte=thirty_days_ago
+    ).distinct()
+
+    for u in users_with_tardies:
+        latest_act = DisciplinaryAct.objects.filter(user=u).order_by('-date_created').first()
+
+        tardies_qs = Attendance.objects.filter(
+            user=u,
+            entry_status=AttendanceStatus.RETARDO,
+            date__gte=thirty_days_ago
+        )
+
+        if latest_act:
+            tardies_count = tardies_qs.filter(
+                Q(entry_time__gt=latest_act.date_created) |
+                Q(entry_time__isnull=True, date__gt=latest_act.date_created.date())
+            ).count()
+        else:
+            tardies_count = tardies_qs.count()
+
+        if tardies_count > 0:
+            critical_tardies.append({
+                'user__first_name': u.first_name,
+                'user__last_name': u.last_name,
+                'user__document_number': u.document_number,
+                'count': tardies_count
+            })
+
+    critical_tardies.sort(key=lambda x: x['count'], reverse=True)
+
+    # KPI LLEGADAS TARDE: relacionar ÚNICAMENTE las llegadas tarde vigentes en el Panel de Auditoría
+    llegadas_tarde = sum(ct['count'] for ct in critical_tardies)
+
+    # Alerta de Geolocalización: Marcaciones fuera de la empresa (Hoy) - solo para administradores
+    if is_admin:
+        out_of_bounds_alerts = Attendance.objects.filter(
+            date=today_local, is_out_of_bounds=True
+        ).select_related('user')
+        if collab_id:
+            out_of_bounds_alerts = out_of_bounds_alerts.filter(user_id=collab_id)
+    else:
+        out_of_bounds_alerts = Attendance.objects.none()
+
+    # Calcular ausencias (Faltas o no llegadas) para la fecha seleccionada o hoy - solo para administradores
     absencias_hoy = []
-    
-    if user.role in ['ADMIN', 'JEFE'] or user.is_superuser:
+    if is_admin:
         for c in collabs:
-            # Solo si tiene turno hoy
             turn = get_current_turn(c, target_date)
             if turn:
-                # Verificar si no ha marcado entrada
                 if not Attendance.objects.filter(user=c, date=target_date, entry_time__isnull=False).exists():
-                    # Verificar si no tiene un permiso aprobado que lo justifique
                     has_perm = False
                     for p in Permission.objects.filter(user=c, status='APROBADO'):
-                        if p.start_date.date() <= target_date <= p.end_date.date():
+                        p_s = timezone.localtime(p.start_date).date()
+                        p_e = timezone.localtime(p.end_date).date()
+                        if p_s <= target_date <= p_e:
                             has_perm = True
                             break
                     if not has_perm:
                         absencias_hoy.append({'name': c.get_full_name(), 'turn': f"{turn.start_time.strftime('%H:%M')} - {turn.end_time.strftime('%H:%M')}"})
 
     context = {
-        'is_admin': user.role in ['ADMIN', 'JEFE'] or user.is_superuser,
-        'users': User.objects.filter(is_active=True),
+        'is_admin': is_admin,
+        'users': User.objects.filter(is_active=True) if is_admin else User.objects.filter(id=user.id),
         'kpis': {
-            'extras': round(total_extras, 1),
-            'permisos': round(total_permisos, 1),
+            'extras': round(net_total_extras, 1),
+            'permisos': round(net_total_permisos, 1),
             'tardies': llegadas_tarde,
             'acts_signed': actas_firmadas,
             'acts_pending': actas_pendientes
@@ -305,7 +395,7 @@ def dashboard(request):
         'f_year': year,
         'f_month': month,
         'f_day': day,
-        'f_collab': collab_id,
+        'f_collab': collab_id if is_admin else None,
         'target_date_str': target_date.strftime('%Y-%m-%d'),
     }
     

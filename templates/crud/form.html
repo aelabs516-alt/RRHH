@@ -93,6 +93,7 @@
         // ---- Lógica específica para Permisos y Vacaciones ----
         const categorySelect = document.querySelector('select[name="category"]');
         if (categorySelect) {
+            const userSelect = document.querySelector('select[name="user"]');
             const startInput = document.querySelector('input[name="start_date"]');
             const endInput = document.querySelector('input[name="end_date"]');
             const daysInput = document.querySelector('input[name="days_requested"]');
@@ -102,6 +103,38 @@
             if (daysInput) {
                 daysContainer = daysInput.closest('.col-md-6');
                 daysInput.setAttribute('readonly', true); // Automático
+            }
+
+            // Vista previa dinámica de horas laborales para permisos (excluyendo fuera de turno y almuerzo)
+            let permPreview = document.createElement('div');
+            permPreview.id = 'permHoursPreview';
+            permPreview.className = 'col-12 mb-3';
+            permPreview.style.display = 'none';
+            if (endInput && endInput.closest('.col-md-6')) {
+                endInput.closest('.col-md-6').after(permPreview);
+            }
+
+            function fetchPermissionWorkingHours() {
+                if (categorySelect.value === 'VACACIONES' || !startInput.value || !endInput.value) {
+                    permPreview.style.display = 'none';
+                    return;
+                }
+                const params = new URLSearchParams({
+                    start_date: startInput.value,
+                    end_date: endInput.value,
+                    user_id: userSelect ? userSelect.value : ''
+                });
+                fetch('/api/permission-hours/?' + params.toString())
+                    .then(res => res.json())
+                    .then(data => {
+                        if (typeof data.hours === 'number') {
+                            permPreview.innerHTML = `<div class="alert alert-info py-2 px-3 mb-0 small"><i class="fas fa-clock me-1"></i> Tiempo laboral calculado según turno (excluye horario no laboral, domingos/festivos y 1h de almuerzo L-V): <strong>${data.hours} horas</strong></div>`;
+                            permPreview.style.display = 'block';
+                        } else {
+                            permPreview.style.display = 'none';
+                        }
+                    })
+                    .catch(() => { permPreview.style.display = 'none'; });
             }
 
             function updateVacationUI() {
@@ -115,6 +148,7 @@
                     endInput.type = 'date';
                     
                     if(daysContainer) daysContainer.style.display = 'block';
+                    permPreview.style.display = 'none';
                     calculateWorkingDays();
                 } else {
                     // Formatear añadiendo la hora por defecto si no la tiene
@@ -125,6 +159,7 @@
                     endInput.type = 'datetime-local';
                     if(daysContainer) daysContainer.style.display = 'none';
                     if(daysInput) daysInput.value = '';
+                    fetchPermissionWorkingHours();
                 }
             }
 
@@ -159,8 +194,11 @@
             }
 
             categorySelect.addEventListener('change', updateVacationUI);
-            startInput.addEventListener('change', calculateWorkingDays);
-            endInput.addEventListener('change', calculateWorkingDays);
+            startInput.addEventListener('change', () => { calculateWorkingDays(); fetchPermissionWorkingHours(); });
+            endInput.addEventListener('change', () => { calculateWorkingDays(); fetchPermissionWorkingHours(); });
+            if (userSelect) {
+                userSelect.addEventListener('change', fetchPermissionWorkingHours);
+            }
             
             // Trigger on load
             updateVacationUI();

@@ -48,6 +48,8 @@
         <div class="field-row"><span class="field-label">Fecha y Hora de Fin:</span> {{ perm.end_date|date:"Y-m-d H:i" }}</div>
         {% if perm.category == 'VACACIONES' %}
         <div class="field-row"><span class="field-label">Días Hábiles Solicitados:</span> {{ perm.days_requested }} días</div>
+        {% else %}
+        <div class="field-row"><span class="field-label">Horas Laborales Solicitadas:</span> {{ perm.get_working_hours }} horas</div>
         {% endif %}
         
         <div class="section-title">Motivo / Razón de la Solicitud</div>

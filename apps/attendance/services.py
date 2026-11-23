@@ -1,9 +1,246 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from django.utils import timezone
 from django.db import models
 from apps.attendance.models import Attendance, AttendanceStatus
-from apps.organization.models import EmployeeTurn
+from apps.organization.models import EmployeeTurn, CustomHoliday
 from apps.hr.models import DisciplinaryAct, FaultSeverity
+
+REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+NO_REMUNERADOS = ['PERSONAL', 'OTROS']
+
+
+def get_colombian_holidays(years):
+    """Retorna un conjunto de fechas festivas de Colombia + festivos personalizados para los años dados."""
+    holiday_dates = set()
+    try:
+        import holidays as pyholidays
+        co_holidays = pyholidays.CO(years=list(years))
+        holiday_dates.update(co_holidays.keys())
+    except Exception:
+        pass
+    db_holidays = CustomHoliday.objects.values_list('date', flat=True)
+    holiday_dates.update(db_holidays)
+    return holiday_dates
+
+
+def get_lunch_window(work_date, turn_start_dt, turn_end_dt):
+    """
+    De lunes a viernes (weekday 0..4), toda jornada completa (> 5 horas) cuenta con
+    1 hora de almuerzo que no se contabiliza dentro de los tiempos totales de trabajo.
+    Se ubica la ventana de 1 hora en el punto medio del turno (ej: 08:00-17:00 -> 12:00-13:00;
+    09:00-18:00 -> 13:00-14:00).
+    """
+    if work_date.weekday() < 5 and turn_start_dt and turn_end_dt:
+        turn_span = turn_end_dt - turn_start_dt
+        if turn_span > timedelta(hours=5):
+            midpoint = turn_start_dt + (turn_span / 2)
+            return (midpoint - timedelta(minutes=30), midpoint + timedelta(minutes=30))
+    return (None, None)
+
+
+def effective_seconds(start_dt, end_dt, lunch_start=None, lunch_end=None):
+    """
+    Retorna los segundos efectivos entre start_dt y end_dt, descontando cualquier
+    traslape con la ventana de almuerzo [lunch_start, lunch_end].
+    """
+    if not start_dt or not end_dt or end_dt <= start_dt:
+        return 0.0
+    raw_secs = (end_dt - start_dt).total_seconds()
+    if lunch_start and lunch_end:
+        overlap_start = max(start_dt, lunch_start)
+        overlap_end = min(end_dt, lunch_end)
+        if overlap_end > overlap_start:
+            raw_secs -= (overlap_end - overlap_start).total_seconds()
+    return max(0.0, raw_secs)
+
+
+def calculate_attendance_metrics(
+    work_date,
+    turn,
+    entry_dt,
+    exit_dt,
+    entry_justification='NORMAL',
+    exit_justification='NORMAL',
+    apply_exit_only_threshold=False,
+):
+    """
+    Calcula (hours_worked, extra_hours, permission_hours) aplicando:
+    - Exclusión de 1 hora de almuerzo de lunes a viernes en jornadas completas (> 5h).
+    - Permisos remunerados no descuentan tiempo y suman a las horas trabajadas.
+    - Permisos no remunerados (PERSONAL, OTROS) no generan horas extras.
+    - Umbrales de hora extra: >= 30 min anticipado en ingreso, >= 20 min tarde en salida.
+    - La llegada tarde no remunerada no se acumula en permission_hours (es retardo).
+    """
+    hours_worked = 0.0
+    extra_hours = 0.0
+    permission_hours = 0.0
+
+    # Soportar turno nocturno en registros manuales donde exit_dt < entry_dt
+    if entry_dt and exit_dt and exit_dt < entry_dt:
+        if turn and turn.start_time and turn.end_time and turn.end_time < turn.start_time:
+            exit_dt = exit_dt + timedelta(days=1)
+
+    turn_start_dt = None
+    turn_end_dt = None
+    lunch_start = None
+    lunch_end = None
+
+    if turn and turn.start_time and turn.end_time:
+        turn_start_dt = timezone.make_aware(datetime.combine(work_date, turn.start_time))
+        turn_end_dt = timezone.make_aware(datetime.combine(work_date, turn.end_time))
+        if turn.end_time < turn.start_time:
+            turn_end_dt += timedelta(days=1)
+        lunch_start, lunch_end = get_lunch_window(work_date, turn_start_dt, turn_end_dt)
+
+    if entry_dt and exit_dt and turn_start_dt and turn_end_dt:
+        turn_effective_secs = effective_seconds(turn_start_dt, turn_end_dt, lunch_start, lunch_end)
+        raw_worked_secs = effective_seconds(entry_dt, exit_dt, lunch_start, lunch_end)
+        worked_secs = raw_worked_secs
+
+        # Agregar tiempo si llegó tarde con justa causa remunerada
+        paid_morning_secs = 0.0
+        if entry_justification in REMUNERADOS and entry_dt > turn_start_dt:
+            paid_morning_secs = effective_seconds(turn_start_dt, entry_dt, lunch_start, lunch_end)
+            worked_secs += paid_morning_secs
+
+        time_balance = worked_secs - turn_effective_secs
+
+        # Déficit de ingreso no remunerado
+        deficit_entry = 0.0
+        if entry_dt > turn_start_dt and entry_justification not in REMUNERADOS:
+            deficit_entry = effective_seconds(turn_start_dt, entry_dt, lunch_start, lunch_end)
+
+        # Déficit de salida anticipada
+        deficit_exit = 0.0
+        if exit_dt < turn_end_dt:
+            deficit_exit = effective_seconds(exit_dt, turn_end_dt, lunch_start, lunch_end)
+
+        if time_balance < 0:
+            # Regla: Si llegó tarde pero no compensó, no tomar el tiempo de llegada tarde como permiso.
+            deficit_total = abs(time_balance)
+            deuda_real = max(0.0, deficit_total - deficit_entry)
+            permission_hours = deuda_real / 3600.0
+            extra_hours = 0.0
+        else:
+            permission_hours = 0.0
+            early_secs = 0.0
+            if entry_dt < turn_start_dt:
+                early_secs = effective_seconds(entry_dt, turn_start_dt, lunch_start, lunch_end)
+                if early_secs < 30 * 60 or entry_justification in NO_REMUNERADOS:
+                    early_secs = 0.0
+
+            late_secs = 0.0
+            if exit_dt > turn_end_dt:
+                late_secs = effective_seconds(turn_end_dt, exit_dt, lunch_start, lunch_end)
+                if late_secs < 20 * 60 or exit_justification in NO_REMUNERADOS:
+                    late_secs = 0.0
+
+            valid_extra = early_secs + late_secs - (deficit_entry + deficit_exit)
+            extra_hours = (valid_extra / 3600.0) if valid_extra > 0 else 0.0
+
+        # Horas trabajadas efectivas (sin almuerzo, sumando permisos remunerados)
+        total_worked_secs = raw_worked_secs + paid_morning_secs
+        if exit_justification in REMUNERADOS and exit_dt < turn_end_dt:
+            total_worked_secs += effective_seconds(exit_dt, turn_end_dt, lunch_start, lunch_end)
+        hours_worked = total_worked_secs / 3600.0
+
+    elif exit_dt and turn_end_dt and not entry_dt:
+        if exit_dt > turn_end_dt:
+            extra_secs = effective_seconds(turn_end_dt, exit_dt, lunch_start, lunch_end)
+            if (not apply_exit_only_threshold or extra_secs >= 20 * 60) and exit_justification not in NO_REMUNERADOS:
+                extra_hours = extra_secs / 3600.0
+        if exit_dt < turn_end_dt:
+            early_secs = effective_seconds(exit_dt, turn_end_dt, lunch_start, lunch_end)
+            permission_hours = early_secs / 3600.0
+
+    elif entry_dt and exit_dt and not turn:
+        # Día sin turno asignado (descanso/extra): todas las horas efectivas son extras
+        raw_secs = max(0.0, (exit_dt - entry_dt).total_seconds())
+        if work_date.weekday() < 5 and raw_secs > 5 * 3600:
+            raw_secs -= 3600.0
+        hours_worked = raw_secs / 3600.0
+        if hours_worked > 0 and exit_justification not in NO_REMUNERADOS:
+            extra_hours = hours_worked
+
+    if exit_justification in REMUNERADOS and permission_hours > 0:
+        permission_hours = 0.0
+
+    return round(hours_worked, 2), round(extra_hours, 2), round(permission_hours, 2)
+
+
+def calculate_permission_working_hours(
+    user,
+    start_dt,
+    end_dt,
+    filter_start_date=None,
+    filter_end_date=None,
+    holidays_set=None,
+):
+    """
+    Calcula las horas laborales efectivas de un permiso (de uno o varios días),
+    considerando ÚNICAMENTE el horario laboral asignado al colaborador (EmployeeTurn),
+    NO las 24 horas del día:
+    - Intersecta cada día del rango con el turno laboral del colaborador.
+    - Excluye días de descanso (sin turno asignado) y festivos colombianos/personalizados.
+    - Excluye la 1 hora de almuerzo de lunes a viernes en jornadas completas (> 5 horas).
+    - Si el colaborador no tiene matriz de turnos asignada, usa L-V 08:00-17:00 (8h efectivas/día).
+    """
+    if not start_dt or not end_dt or end_dt <= start_dt:
+        return 0.0
+
+    start_local = timezone.make_aware(start_dt) if timezone.is_naive(start_dt) else timezone.localtime(start_dt)
+    end_local = timezone.make_aware(end_dt) if timezone.is_naive(end_dt) else timezone.localtime(end_dt)
+
+    if filter_start_date:
+        f_start_dt = timezone.make_aware(datetime.combine(filter_start_date, time.min))
+        start_local = max(start_local, f_start_dt)
+    if filter_end_date:
+        f_end_dt = timezone.make_aware(datetime.combine(filter_end_date + timedelta(days=1), time.min))
+        end_local = min(end_local, f_end_dt)
+
+    if end_local <= start_local:
+        return 0.0
+
+    if holidays_set is None:
+        years = range(start_local.year - 1, end_local.year + 2)
+        holidays_set = get_colombian_holidays(years)
+
+    has_matrix = EmployeeTurn.objects.filter(user=user).exists()
+
+    total_secs = 0.0
+    curr_date = start_local.date() - timedelta(days=1)
+    last_date = end_local.date()
+
+    while curr_date <= last_date:
+        if curr_date in holidays_set:
+            curr_date += timedelta(days=1)
+            continue
+
+        turn_start_dt = None
+        turn_end_dt = None
+
+        if has_matrix:
+            turn = get_current_turn(user, curr_date)
+            if turn and turn.start_time and turn.end_time:
+                turn_start_dt = timezone.make_aware(datetime.combine(curr_date, turn.start_time))
+                turn_end_dt = timezone.make_aware(datetime.combine(curr_date, turn.end_time))
+                if turn.end_time < turn.start_time:
+                    turn_end_dt += timedelta(days=1)
+        else:
+            if curr_date.weekday() < 5:
+                turn_start_dt = timezone.make_aware(datetime.combine(curr_date, time(8, 0)))
+                turn_end_dt = timezone.make_aware(datetime.combine(curr_date, time(17, 0)))
+
+        if turn_start_dt and turn_end_dt:
+            overlap_start = max(start_local, turn_start_dt)
+            overlap_end = min(end_local, turn_end_dt)
+            if overlap_end > overlap_start:
+                lunch_start, lunch_end = get_lunch_window(curr_date, turn_start_dt, turn_end_dt)
+                total_secs += effective_seconds(overlap_start, overlap_end, lunch_start, lunch_end)
+
+        curr_date += timedelta(days=1)
+
+    return round(total_secs / 3600.0, 2)
 
 def get_current_turn(user, date):
     """Obtiene el turno activo de un colaborador para una fecha dada desde la matriz."""
@@ -141,8 +378,8 @@ def process_entry(user, entry_datetime, entry_justification='NORMAL', entry_obse
         
     if needs_entry_just and entry_justification == 'NORMAL':
         raise ValueError("require_entry_justification")
-            
-        REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
+
+    if entry_datetime > grace_period:
         if entry_justification in REMUNERADOS:
             status = AttendanceStatus.A_TIEMPO
         else:
@@ -207,155 +444,51 @@ def process_exit(user, exit_datetime, exit_justification='NORMAL', exit_observat
         
     date = attendance.date
     turn = get_current_turn(user, date)
-    
-    extra_hours = 0.0
-    permission_hours = 0.0
-    
-    if turn and turn.start_time and turn.end_time and attendance.entry_time:
-        turn_start_datetime = timezone.make_aware(datetime.combine(date, turn.start_time))
-        turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))
-        
-        # Night shift logic
-        if turn.end_time < turn.start_time:
-            turn_end_datetime += timedelta(days=1)
-            
-        turn_duration = turn_end_datetime - turn_start_datetime
-        
-        # 1. Calcular tiempo físico real
-        worked_duration = exit_datetime - attendance.entry_time
-        
-        # 2. Agregar tiempo si llegó tarde con justa causa remunerada
-        REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
-        if getattr(attendance, 'entry_justification', 'NORMAL') in REMUNERADOS and attendance.entry_time > turn_start_datetime:
-            paid_morning_delay = attendance.entry_time - turn_start_datetime
-            worked_duration += paid_morning_delay
-            
-        time_balance = worked_duration.total_seconds() - turn_duration.total_seconds()
-        
-        # Calcular los déficits físicos
-        deficit_entry = 0
-        if attendance.entry_time > turn_start_datetime:
-            if getattr(attendance, 'entry_justification', 'NORMAL') not in REMUNERADOS:
-                deficit_entry = (attendance.entry_time - turn_start_datetime).total_seconds()
-                
-        deficit_exit = 0
-        if exit_datetime < turn_end_datetime:
-            deficit_exit = (turn_end_datetime - exit_datetime).total_seconds()
 
-        if time_balance < 0:
-            # Regla: Si llegó tarde pero no compensó, no tomar el tiempo de llegada tarde como permiso.
-            # Por lo tanto, la deuda neta (permission_hours) no debe incluir el deficit_entry.
-            deficit_total = abs(time_balance)
-            deuda_real = max(0.0, deficit_total - deficit_entry)
-            permission_hours = deuda_real / 3600.0
-            extra_hours = 0.0
-        else:
-            # Si el tiempo neto físico superó el turno, no debe tiempo
-            permission_hours = 0.0
-            
-            # Ahora, ¿cuánto de este balance positivo califica como hora extra válida?
-            early_secs = 0
-            if attendance.entry_time < turn_start_datetime:
-                early_secs = (turn_start_datetime - attendance.entry_time).total_seconds()
-                if early_secs < 30 * 60:
-                    early_secs = 0
-                elif getattr(attendance, 'entry_justification', 'NORMAL') in ['PERSONAL', 'OTROS']:
-                    early_secs = 0
-                    
-            late_secs = 0
-            if exit_datetime > turn_end_datetime:
-                late_secs = (exit_datetime - turn_end_datetime).total_seconds()
-                if late_secs < 20 * 60:
-                    late_secs = 0
-                elif exit_justification in ['PERSONAL', 'OTROS']:
-                    late_secs = 0
-                    
-            # Si compensó llegando tarde o saliendo temprano (ya lo cubrimos en worked_duration, pero 
-            # para hallar el extra exacto lo restamos del 'early' y 'late')
-            deficit_entry = 0
-            if attendance.entry_time > turn_start_datetime:
-                if getattr(attendance, 'entry_justification', 'NORMAL') not in REMUNERADOS:
-                    deficit_entry = (attendance.entry_time - turn_start_datetime).total_seconds()
-                    
-            deficit_exit = 0
-            if exit_datetime < turn_end_datetime:
-                deficit_exit = (turn_end_datetime - exit_datetime).total_seconds()
-                
-            valid_extra = early_secs + late_secs - (deficit_entry + deficit_exit)
-            if valid_extra > 0:
-                extra_hours = valid_extra / 3600.0
-            else:
-                extra_hours = 0.0
-            
-    elif turn and turn.end_time and not attendance.entry_time:
+    turn_end_datetime = None
+    if turn and turn.end_time:
         turn_end_datetime = timezone.make_aware(datetime.combine(date, turn.end_time))
-        if turn.end_time < turn.start_time:
+        if turn.start_time and turn.end_time < turn.start_time:
             turn_end_datetime += timedelta(days=1)
-            
-        extra_time = exit_datetime - turn_end_datetime
-        if extra_time.total_seconds() >= 20 * 60:
-            extra_hours = extra_time.total_seconds() / 3600.0
-            
-        if exit_datetime < turn_end_datetime:
-            early_time = turn_end_datetime - exit_datetime
-            permission_hours = early_time.total_seconds() / 3600.0
+
+    hours_worked, extra_hours, permission_hours = calculate_attendance_metrics(
+        work_date=date,
+        turn=turn,
+        entry_dt=attendance.entry_time,
+        exit_dt=exit_datetime,
+        entry_justification=getattr(attendance, 'entry_justification', 'NORMAL'),
+        exit_justification=exit_justification,
+        apply_exit_only_threshold=True,
+    )
 
     # Condicional de Observaciones Obligatorias
     needs_exit_just = False
-    if turn and turn.end_time:
+    if turn_end_datetime:
         if exit_datetime < turn_end_datetime:
             needs_exit_just = True
         if exit_datetime >= turn_end_datetime + timedelta(minutes=20):
             needs_exit_just = True
-    if not turn and attendance.hours_worked > 0:
+    if not turn and hours_worked > 0:
         needs_exit_just = True
-        
+
     if needs_exit_just and exit_justification == 'NORMAL':
         raise ValueError("require_exit_justification")
-        
-    REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
-    if exit_justification in REMUNERADOS:
-        # Si es remunerado, el tiempo faltante se considera trabajado, no se descuenta
-        if permission_hours > 0:
-            permission_hours = 0.0
-        # Las horas extras se mantienen si las generó después de su permiso (el permiso cuenta como trabajado)
 
     attendance.exit_time = exit_datetime
-    if photo: attendance.exit_photo = photo
-    attendance.extra_hours = round(extra_hours, 2)
-    attendance.permission_hours = round(permission_hours, 2)
+    if photo:
+        attendance.exit_photo = photo
+    attendance.hours_worked = hours_worked
+    attendance.extra_hours = extra_hours
+    attendance.permission_hours = permission_hours
     attendance.exit_justification = exit_justification
     attendance.exit_observations = exit_observations
-    
+
     if lat is not None and lng is not None:
         distance = calculate_distance(float(lat), float(lng), COMPANY_LAT, COMPANY_LNG)
         attendance.latitude = lat
         attendance.longitude = lng
         if distance > settings.tolerance_radius:
             attendance.is_out_of_bounds = True
-    
-    # Horas trabajadas en el día
-    if attendance.entry_time:
-        worked_time = exit_datetime - attendance.entry_time
-        attendance.hours_worked = round(worked_time.total_seconds() / 3600.0, 2)
-        
-        # Aumentar las horas trabajadas si hubo un permiso remunerado
-        REMUNERADOS = ['CITA_MEDICA', 'ELECCIONES', 'CALAMIDAD', 'ESCOLAR', 'JUDICIAL', 'LUTO', 'ENFERMEDAD']
-        if getattr(attendance, 'entry_justification', 'NORMAL') in REMUNERADOS and turn and turn.start_time:
-            turn_start = timezone.make_aware(datetime.combine(date, turn.start_time))
-            if attendance.entry_time > turn_start:
-                attendance.hours_worked += round((attendance.entry_time - turn_start).total_seconds() / 3600.0, 2)
-                
-        if exit_justification in REMUNERADOS and turn and turn.end_time:
-            turn_end = timezone.make_aware(datetime.combine(date, turn.end_time))
-            if turn.end_time < turn.start_time:
-                turn_end += timedelta(days=1)
-            if exit_datetime < turn_end:
-                attendance.hours_worked += round((turn_end - exit_datetime).total_seconds() / 3600.0, 2)
-        
-    if not turn and attendance.hours_worked > 0:
-        # Si trabajó en un día de descanso (sin turno), todo es hora extra
-        attendance.extra_hours = attendance.hours_worked
-        
+
     attendance.save()
     return attendance

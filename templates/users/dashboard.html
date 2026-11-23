@@ -88,7 +88,7 @@
         <div class="kpi-card">
             <div class="kpi-icon-box" style="background:#e6f7f0; color:#00b87c;"><i class="fas fa-bolt"></i></div>
             <div>
-                <p class="kpi-title">HORAS EXTRAS</p>
+                <p class="kpi-title">HORAS EXTRAS <small class="text-muted">(NETO)</small></p>
                 <p class="kpi-value">{{ kpis.extras }}h</p>
             </div>
         </div>
@@ -97,7 +97,7 @@
         <div class="kpi-card" style="border-left-color: #f6ad55;">
             <div class="kpi-icon-box" style="background:#fffaf0; color:#dd6b20;"><i class="fas fa-clock"></i></div>
             <div>
-                <p class="kpi-title">HORAS PERMISO</p>
+                <p class="kpi-title">HORAS PERMISO <small class="text-muted">(NETO)</small></p>
                 <p class="kpi-value">{{ kpis.permisos }}h</p>
             </div>
         </div>
@@ -127,7 +127,7 @@
     <!-- Gráfico Horas Extras -->
     <div class="col-md-6">
         <div class="card shadow-sm h-100">
-            <div class="card-header fw-bold">Horas Extras Acumuladas por Colaborador</div>
+            <div class="card-header fw-bold">Horas Extras Acumuladas por Colaborador (Balance Neto)</div>
             <div class="card-body">
                 <canvas id="extrasChart"></canvas>
             </div>
@@ -311,13 +311,14 @@
     Chart.register(ChartDataLabels);
     Chart.defaults.font.family = "'Poppins', sans-serif";
 
-    // Data para Horas Extras
+    // Data para Horas Extras (Balance Neto)
     const extrasLabels = [
         {% for e in extras_chart %}"{{ e.user__first_name }} {{ e.user__last_name }}",{% endfor %}
     ];
     const extrasData = [
-        {% for e in extras_chart %}{{ e.total|stringformat:"f" }},{% endfor %}
+        {% for e in extras_chart %}{{ e.total|stringformat:".1f" }},{% endfor %}
     ];
+    const extrasColors = extrasData.map(v => v >= 0 ? '#00b87c' : '#e53e3e');
 
     if(extrasLabels.length > 0) {
         new Chart(document.getElementById('extrasChart'), {
@@ -325,22 +326,26 @@
             data: {
                 labels: extrasLabels,
                 datasets: [{
-                    label: 'Horas Extras',
+                    label: 'Balance Neto (h)',
                     data: extrasData,
-                    backgroundColor: '#00b87c',
+                    backgroundColor: extrasColors,
                     borderRadius: 4
                 }]
             },
             options: {
                 responsive: true,
-                layout: { padding: { top: 25 } },
+                layout: { padding: { top: 25, bottom: 25 } },
                 plugins: {
                     datalabels: {
-                        anchor: 'end',
-                        align: 'top',
+                        anchor: function(ctx) {
+                            return ctx.dataset.data[ctx.dataIndex] >= 0 ? 'end' : 'start';
+                        },
+                        align: function(ctx) {
+                            return ctx.dataset.data[ctx.dataIndex] >= 0 ? 'top' : 'bottom';
+                        },
                         color: 'var(--bs-body-color)',
                         font: { weight: 'bold' },
-                        formatter: function(value) { return value + 'h'; }
+                        formatter: function(value) { return (value > 0 ? '+' : '') + value + 'h'; }
                     },
                     legend: { display: false }
                 },
@@ -357,7 +362,7 @@
         {% for v in vacs_chart %}"{{ v.name }}",{% endfor %}
     ];
     const vacsData = [
-        {% for v in vacs_chart %}{{ v.balance|stringformat:"f" }},{% endfor %}
+        {% for v in vacs_chart %}{{ v.balance|stringformat:".1f" }},{% endfor %}
     ];
 
     if(vacsLabels.length > 0) {

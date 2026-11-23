@@ -48,6 +48,7 @@
                     <label class="form-label fw-bold">Justificación Ingreso (Llegada tarde)</label>
                     <select name="entry_justification" class="form-select">
                         <option value="NORMAL">Ninguna / Normal</option>
+                        <option value="TIEMPO_EXTRA">Tiempo Extra</option>
                         <optgroup label="Permisos Remunerados">
                             <option value="CITA_MEDICA">Cita médica</option>
                             <option value="ELECCIONES">Elecciones / Jurado</option>
@@ -74,6 +75,7 @@
                     <label class="form-label fw-bold">Justificación Salida (Anticipada/Extra)</label>
                     <select name="exit_justification" class="form-select">
                         <option value="NORMAL">Ninguna / Normal</option>
+                        <option value="TIEMPO_EXTRA">Tiempo Extra</option>
                         <optgroup label="Permisos Remunerados">
                             <option value="CITA_MEDICA">Cita médica</option>
                             <option value="ELECCIONES">Elecciones / Jurado</option>
@@ -102,16 +104,58 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const userSelect = document.querySelector('select[name="user_id"]');
+        const dateInput = document.querySelector('input[name="date"]');
         const entryInput = document.querySelector('input[name="entry_time"]');
         const exitInput = document.querySelector('input[name="exit_time"]');
-        
+        const userTurns = {{ user_turns_json|safe|default:"{}" }};
+
+        function toMinutes(hhmm) {
+            const parts = hhmm.split(':');
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+
         function calcHours() {
             if (entryInput.value && exitInput.value) {
-                const start = new Date("1970-01-01T" + entryInput.value + ":00");
-                const end = new Date("1970-01-01T" + exitInput.value + ":00");
-                let diff = (end - start) / (1000 * 60 * 60);
-                if (diff < 0) diff += 24; // Cross-midnight
-                
+                let startMin = toMinutes(entryInput.value);
+                let endMin = toMinutes(exitInput.value);
+
+                let isWeekday = false;
+                let turnPair = null;
+                if (dateInput && dateInput.value) {
+                    const dObj = new Date(dateInput.value + "T00:00:00");
+                    const jsDay = dObj.getDay(); // 0=Dom, 1=Lun .. 5=Vie, 6=Sab
+                    isWeekday = jsDay >= 1 && jsDay <= 5;
+                    if (userSelect && userSelect.value && userTurns[userSelect.value]) {
+                        turnPair = userTurns[userSelect.value][String(jsDay)] || null;
+                    }
+                }
+
+                let tStart = turnPair ? toMinutes(turnPair[0]) : null;
+                let tEnd = turnPair ? toMinutes(turnPair[1]) : null;
+
+                if (turnPair && tEnd < tStart) {
+                    tEnd += 1440;
+                    if (endMin < startMin) endMin += 1440;
+                } else if (!turnPair && endMin < startMin) {
+                    endMin += 1440;
+                }
+
+                let workedMin = Math.max(0, endMin - startMin);
+                if (isWeekday && workedMin > 0) {
+                    if (turnPair && (tEnd - tStart) > 300) {
+                        const mid = (tStart + tEnd) / 2;
+                        const ovStart = Math.max(startMin, mid - 30);
+                        const ovEnd = Math.min(endMin, mid + 30);
+                        if (ovEnd > ovStart) {
+                            workedMin -= (ovEnd - ovStart);
+                        }
+                    } else if (!turnPair && workedMin > 300) {
+                        workedMin -= 60;
+                    }
+                }
+
+                const diff = Math.max(0, workedMin) / 60;
                 let hrDisplay = document.getElementById('live_hours');
                 if (!hrDisplay) {
                     hrDisplay = document.createElement('div');
@@ -119,12 +163,14 @@
                     hrDisplay.className = 'mt-2 fw-bold text-success';
                     exitInput.parentNode.appendChild(hrDisplay);
                 }
-                hrDisplay.innerText = "Horas Calculadas: " + diff.toFixed(2) + " h";
+                hrDisplay.innerText = "Horas Efectivas Calculadas: " + diff.toFixed(2) + " h";
             }
         }
-        
+
         entryInput.addEventListener('change', calcHours);
         exitInput.addEventListener('change', calcHours);
+        if (dateInput) dateInput.addEventListener('change', calcHours);
+        if (userSelect) userSelect.addEventListener('change', calcHours);
     });
 </script>
 {% endblock %}

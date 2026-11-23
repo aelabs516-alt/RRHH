@@ -51,19 +51,19 @@
                         <i class="fas fa-calendar-alt"></i> 2. Programación del Periodo
                     </div>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-3">
+                        <div class="col-6 col-lg-3">
                             <label class="form-label">Fecha de Inicio (Salida)</label>
                             <input type="text" class="form-control fw-bold tabular-nums" style="color: var(--brand);" value="{{ object.start_date|date:'d/m/Y' }}" readonly>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-lg-3">
                             <label class="form-label">Fecha Final</label>
                             <input type="text" class="form-control fw-bold tabular-nums" style="color: var(--brand);" value="{{ object.end_date|date:'d/m/Y' }}" readonly>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-lg-3">
                             <label class="form-label">Fecha de Regreso</label>
                             <input type="text" class="form-control fw-bold tabular-nums" style="color: var(--success);" value="{{ object.return_date|date:'d/m/Y' }}" readonly>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-lg-3">
                             <label class="form-label">Días Hábiles</label>
                             <input type="text" class="form-control fw-bold tabular-nums" value="{{ object.days_enjoyed }} días" readonly>
                         </div>
@@ -143,6 +143,23 @@ document.addEventListener("DOMContentLoaded", function() {
             backgroundColor: 'rgb(255, 255, 255)',
             penColor: 'rgb(15, 23, 42)'
         });
+
+        function resizeSignatureCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            const data = signaturePad.toData();
+            const displayWidth = Math.min(canvas.parentElement.clientWidth || 320, 340);
+            const displayHeight = 160;
+            canvas.width = displayWidth * ratio;
+            canvas.height = displayHeight * ratio;
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+            canvas.getContext('2d').scale(ratio, ratio);
+            signaturePad.clear();
+            if (data.length) signaturePad.fromData(data);
+        }
+
+        resizeSignatureCanvas();
+        window.addEventListener('resize', resizeSignatureCanvas);
 
         document.getElementById('clear-signature').addEventListener('click', function () {
             signaturePad.clear();

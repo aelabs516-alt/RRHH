@@ -12,22 +12,22 @@
         <p class="page-subtitle">Consulta, busca y administra los registros del módulo.</p>
     </div>
 
-    <div class="d-flex flex-wrap align-items-center gap-2">
+    <div class="page-header-actions">
         {% if search_enabled %}
-        <form method="get" class="d-flex align-items-center gap-2">
-            <div class="input-group input-group-sm" style="min-width: 230px;">
+        <form method="get" class="d-flex align-items-center gap-2 flex-grow-1 flex-sm-grow-0">
+            <div class="input-group input-group-sm" style="min-width: 0; max-width: 260px;">
                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                 <input type="text" name="q" class="form-control" placeholder="Buscar por cédula..." value="{{ request.GET.q }}">
                 {% if request.GET.q %}
                 <a href="?" class="btn btn-outline-secondary" title="Limpiar búsqueda"><i class="fas fa-times"></i></a>
                 {% endif %}
             </div>
-            <button type="submit" class="btn btn-sm btn-outline-secondary">Buscar</button>
+            <button type="submit" class="btn btn-sm btn-outline-secondary flex-shrink-0">Buscar</button>
         </form>
         {% endif %}
 
         {% if create_url %}
-        <a href="{% url create_url %}" class="btn btn-primary">
+        <a href="{% url create_url %}" class="btn btn-primary flex-shrink-0">
             <i class="fas fa-plus"></i> Nuevo Registro
         </a>
         {% endif %}

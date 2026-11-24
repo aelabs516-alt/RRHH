@@ -81,6 +81,10 @@
                         <i class="fas fa-plane-departure nav-icon"></i>
                         <span>Notificaciones Vacacionales</span>
                     </a>
+                    <a href="{% url 'change_password' %}" class="nav-link-item {% if url_name == 'change_password' %}active{% endif %}">
+                        <i class="fas fa-key nav-icon"></i>
+                        <span>Cambiar Contraseña</span>
+                    </a>
 
                     {% if user.role == 'ADMIN' or user.role == 'JEFE' or user.is_superuser %}
                     <p class="nav-section-title">Consola Marcaciones</p>

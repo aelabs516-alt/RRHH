@@ -350,9 +350,52 @@ class ScheduleLunchAndDashboardTests(TestCase):
             'download_payroll',
             'payroll_list',
             'payroll_mass_upload',
+            'change_password',
         ]
         for url_name in admin_urls:
             resp = client.get(reverse(url_name))
             self.assertEqual(resp.status_code, 200, f"Failed to render {url_name}")
             self.assertContains(resp, 'css/app.css')
             self.assertContains(resp, 'themeToggle')
+
+    def test_collaborator_password_change_validation_and_success(self):
+        client = Client()
+        client.force_login(self.collab_a)
+        url = reverse('change_password')
+
+        # Renderizado correcto con medidor de seguridad
+        resp_get = client.get(url)
+        self.assertEqual(resp_get.status_code, 200)
+        self.assertContains(resp_get, 'strengthLabel')
+
+        # Rechaza contraseñas que incumplen reglas de seguridad
+        weak_passwords = [
+            'Ab1!abc',      # menos de 8 caracteres
+            'abcdef1!',     # sin mayúscula
+            'ABCDEF1!',     # sin minúscula
+            'Abcdefg!',     # sin número
+            'Abcdefg1',     # sin símbolo especial
+        ]
+        for bad_pwd in weak_passwords:
+            resp = client.post(url, {
+                'old_password': 'pass',
+                'new_password1': bad_pwd,
+                'new_password2': bad_pwd,
+            })
+            self.assertEqual(resp.status_code, 200, f"Should reject weak password: {bad_pwd}")
+            self.assertTrue(resp.context['form'].errors, f"Expected errors for {bad_pwd}")
+
+        # Contraseña segura válida (8+ chars, mayúscula, minúscula, número, símbolo)
+        strong_pwd = 'Segura2026!*'
+        resp_ok = client.post(url, {
+            'old_password': 'pass',
+            'new_password1': strong_pwd,
+            'new_password2': strong_pwd,
+        })
+        self.assertEqual(resp_ok.status_code, 302)
+
+        # La sesión se mantiene activa y el inicio de sesión funciona con la nueva contraseña
+        self.collab_a.refresh_from_db()
+        self.assertTrue(self.collab_a.check_password(strong_pwd))
+        client.logout()
+        self.assertTrue(client.login(username='2001', password=strong_pwd))

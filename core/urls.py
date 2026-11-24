@@ -12,6 +12,7 @@ urlpatterns = [
     path('', user_views.dashboard, name='dashboard'),
     path('login/', user_views.CustomLoginView.as_view(), name='login'),
     path('logout/', user_views.custom_logout, name='logout'),
+    path('password/change/', user_views.CustomPasswordChangeView.as_view(), name='change_password'),
     
     # Módulo de Colaboradores (Custom Frontend)
     path('users/', user_views.UserListView.as_view(), name='users_list'),

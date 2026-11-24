@@ -230,6 +230,8 @@ class ScheduleLunchAndDashboardTests(TestCase):
         self.assertEqual(resp_a.context['extras_chart'][0]['user__first_name'], 'Juan')
         self.assertEqual(resp_a.context['extras_chart'][0]['total'], 2.0)
         self.assertEqual(len(resp_a.context['net_table']), 1)
+        # Los colaboradores NO deben ver controles de ordenamiento en Consolidado Neto
+        self.assertNotContains(resp_a, 'data-sort-key="extras"')
 
         # 2) Sesión de Colaborador B: SOLO sus horas netas (0.0h extras, 4.0h permisos), 2 retardos vigentes (ignora el ya castigado)
         client.force_login(self.collab_b)
@@ -254,6 +256,10 @@ class ScheduleLunchAndDashboardTests(TestCase):
         )
         chart_totals = {e['user__first_name']: e['total'] for e in resp_admin.context['extras_chart']}
         self.assertEqual(chart_totals, {'Juan': 2.0, 'Maria': -4.0})
+        # Los administradores SÍ tienen ordenamiento en Total Extras, Total Permisos y Balance Neto
+        self.assertContains(resp_admin, 'data-sort-key="extras"')
+        self.assertContains(resp_admin, 'data-sort-key="permisos"')
+        self.assertContains(resp_admin, 'data-sort-key="balance"')
 
         # 4) API de preview de horas laborales de permiso
         resp_api = client.get(

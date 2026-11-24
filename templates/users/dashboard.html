@@ -334,21 +334,48 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="netTable">
                 <thead>
                     <tr>
                         <th>Cédula</th>
                         <th>Colaborador</th>
                         <th>Turno / Matriz</th>
-                        <th class="text-end">Total Extras</th>
-                        <th class="text-end">Total Permisos</th>
-                        <th class="text-end">Balance Neto</th>
+                        <th class="text-end" {% if is_admin %}aria-sort="none"{% endif %}>
+                            {% if is_admin %}
+                            <button type="button" class="th-sort-btn" data-sort-key="extras" title="Ordenar de mayor a menor o viceversa">
+                                <span>Total Extras</span>
+                                <i class="fas fa-sort sort-icon"></i>
+                            </button>
+                            {% else %}
+                            Total Extras
+                            {% endif %}
+                        </th>
+                        <th class="text-end" {% if is_admin %}aria-sort="none"{% endif %}>
+                            {% if is_admin %}
+                            <button type="button" class="th-sort-btn" data-sort-key="permisos" title="Ordenar de mayor a menor o viceversa">
+                                <span>Total Permisos</span>
+                                <i class="fas fa-sort sort-icon"></i>
+                            </button>
+                            {% else %}
+                            Total Permisos
+                            {% endif %}
+                        </th>
+                        <th class="text-end" {% if is_admin %}aria-sort="none"{% endif %}>
+                            {% if is_admin %}
+                            <button type="button" class="th-sort-btn" data-sort-key="balance" title="Ordenar de mayor a menor o viceversa">
+                                <span>Balance Neto</span>
+                                <i class="fas fa-sort sort-icon"></i>
+                            </button>
+                            {% else %}
+                            Balance Neto
+                            {% endif %}
+                        </th>
                         <th class="text-center">Estado / Liquidación</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in net_table %}
-                    <tr>
+                    <tr {% if is_admin %}data-extras="{{ row.extras|stringformat:'.2f' }}" data-permisos="{{ row.permisos|stringformat:'.2f' }}" data-balance="{{ row.balance|stringformat:'.2f' }}"{% endif %}>
                         <td class="text-muted tabular-nums">{{ row.doc }}</td>
                         <td class="fw-semibold">
                             <a href="#" data-bs-toggle="modal" data-bs-target="#detailModal{{ forloop.counter }}" class="text-decoration-none d-inline-flex align-items-center gap-1" style="color: var(--brand);">
@@ -587,6 +614,52 @@
 
         renderCharts();
         window.addEventListener('themechange', renderCharts);
+
+        {% if is_admin %}
+        // Ordenamiento interactivo (solo administradores) en Consolidado Neto
+        const netTable = document.getElementById('netTable');
+        if (netTable) {
+            const tbody = netTable.querySelector('tbody');
+            const sortBtns = netTable.querySelectorAll('.th-sort-btn');
+            let currentKey = null;
+            let currentDir = 'desc'; // Primer clic: mayor a menor
+
+            sortBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const key = this.dataset.sortKey;
+                    if (currentKey === key) {
+                        currentDir = currentDir === 'desc' ? 'asc' : 'desc';
+                    } else {
+                        currentKey = key;
+                        currentDir = 'desc';
+                    }
+
+                    const rows = Array.from(tbody.querySelectorAll('tr[data-balance]'));
+                    rows.sort((a, b) => {
+                        const valA = parseFloat(a.dataset[key]) || 0;
+                        const valB = parseFloat(b.dataset[key]) || 0;
+                        return currentDir === 'desc' ? (valB - valA) : (valA - valB);
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+
+                    sortBtns.forEach(b => {
+                        const isThis = b === this;
+                        b.classList.toggle('is-sorted', isThis);
+                        const th = b.closest('th');
+                        if (th) {
+                            th.setAttribute('aria-sort', isThis ? (currentDir === 'desc' ? 'descending' : 'ascending') : 'none');
+                        }
+                        const icon = b.querySelector('.sort-icon');
+                        if (icon) {
+                            icon.className = isThis
+                                ? (currentDir === 'desc' ? 'fas fa-sort-down sort-icon' : 'fas fa-sort-up sort-icon')
+                                : 'fas fa-sort sort-icon';
+                        }
+                    });
+                });
+            });
+        }
+        {% endif %}
     })();
 </script>
 {% endblock %}
